@@ -509,6 +509,7 @@ static void CG_GenericEntityNewState( centity_t *cent )
 	cent->ent.renderfx = cent->renderfx;
 	Vector4Set( cent->ent.shaderRGBA, COLOR_R( rgbacolor ), COLOR_G( rgbacolor ), COLOR_B( rgbacolor ), COLOR_A( rgbacolor ) );
 
+	// this doesn't seem to be working?
 	if( GS_IsBrushModel( cent->current.modelindex1 ) )
 		cent->ent.renderfx |= RF_NOSHADOW;
 
