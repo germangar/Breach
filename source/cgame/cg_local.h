@@ -28,7 +28,7 @@
 
 #include "../gameshared/gs_public.h"
 #include "ref.h"
-#include "../ui/ui_ref.h"
+#include "../gui/ui_ref.h"
 
 #include "cg_public.h"
 #include "cg_syscalls.h"
