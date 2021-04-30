@@ -1,26 +1,20 @@
-Microsoft Visual Studio Solution File, Format Version 9.00
-# Visual Studio 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cgame", "cgame\cgame_vc8.vcproj", "{D96E7BA7-D2FE-4D14-9089-E467B8ED6C1A}"
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cgame", "cgame\cgame_vc8.vcxproj", "{D96E7BA7-D2FE-4D14-9089-E467B8ED6C1A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "game", "game\game_vc8.vcproj", "{BB62470B-2570-4A00-AA33-C556B1DD15D7}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "game", "game\game_vc8.vcxproj", "{BB62470B-2570-4A00-AA33-C556B1DD15D7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wsw_server", "wsw_server\wsw_server_vc8.vcproj", "{6BC8F84D-2F2B-4448-BB7D-5E71167FCE25}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wsw_server", "wsw_server\wsw_server_vc8.vcxproj", "{6BC8F84D-2F2B-4448-BB7D-5E71167FCE25}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "warsow", "warsow\warsow_vc8.vcproj", "{6C704AF6-412B-46F5-BAEA-F868C71C9187}"
-	ProjectSection(ProjectDependencies) = postProject
-		{A9144809-0A60-4931-BCB5-6A7607B76980} = {A9144809-0A60-4931-BCB5-6A7607B76980}
-		{BB62470B-2570-4A00-AA33-C556B1DD15D7} = {BB62470B-2570-4A00-AA33-C556B1DD15D7}
-		{D96E7BA7-D2FE-4D14-9089-E467B8ED6C1A} = {D96E7BA7-D2FE-4D14-9089-E467B8ED6C1A}
-		{638603CC-FF29-402E-841D-2C8186189F59} = {638603CC-FF29-402E-841D-2C8186189F59}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "warsow", "warsow\warsow_vc8.vcxproj", "{6C704AF6-412B-46F5-BAEA-F868C71C9187}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "snd_openal", "snd_openal\snd_openal_vc8.vcproj", "{638603CC-FF29-402E-841D-2C8186189F59}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "snd_openal", "snd_openal\snd_openal_vc8.vcxproj", "{638603CC-FF29-402E-841D-2C8186189F59}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "snd_qf", "snd_qf\snd_qf_vc8.vcproj", "{A9144809-0A60-4931-BCB5-6A7607B76980}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "snd_qf", "snd_qf\snd_qf_vc8.vcxproj", "{A9144809-0A60-4931-BCB5-6A7607B76980}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gui", "gui\gui_vc8.vcproj", "{AFAEC803-4A47-4057-9979-776A08C54D32}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gui", "gui\gui_vc8.vcxproj", "{AFAEC803-4A47-4057-9979-776A08C54D32}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "angelwrap", "angelwrap\angelwrap_vc8.vcproj", "{946C5DD5-C3EE-43DB-B66E-F0A5AD19391C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "angelwrap", "angelwrap\angelwrap_vc8.vcxproj", "{946C5DD5-C3EE-43DB-B66E-F0A5AD19391C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
