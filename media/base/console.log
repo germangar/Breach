@@ -1,0 +1,126 @@
+Opening IP socket: localhost:44400
+Opening IP socket: localhost:49804
+==== Initializing Game Module ====
+------- Server Initialization -------
+Created OcTree space partition with 1 nodes in 0 levels
+* Initializing gametype scripts
+* Initializing Game module syntax
+* Loaded script section 'progs/gametypes/breach.as'
+
+INFO : breach.as (line 337, column 1) :
+ Compiling void target_print_activate(cEntity@, cEntity@, cEntity@)
+
+ERROR : breach.as (line 339, column 38) :
+ 'client' is not a member of 'cEntity'
+
+ERROR : breach.as (line 339, column 6) :
+ Expression must be of boolean type
+
+ERROR : breach.as (line 340, column 12) :
+ 'client' is not a member of 'cEntity'
+
+INFO : breach.as (line 344, column 1) :
+ Compiling void target_print(cEntity@)
+
+ERROR : breach.as (line 346, column 10) :
+ No matching signatures to 'cEntity::getSpawnKey(cString@&)'
+
+ERROR : breach.as (line 346, column 34) :
+ Illegal operation on 'const int'
+
+ERROR : breach.as (line 346, column 6) :
+ Expression must be of boolean type
+
+INFO : breach.as (line 354, column 1) :
+ Compiling void misc_rotated_box(cEntity@)
+
+ERROR : breach.as (line 360, column 15) :
+ No matching signatures to 'cEntity::getSpawnKey(cString@&)'
+
+ERROR : breach.as (line 360, column 38) :
+ Illegal operation on 'const int'
+
+WARNING : breach.as (line 361, column 13) :
+ 'radius' is not initialized.
+
+ERROR : breach.as (line 367, column 13) :
+ 'ET_MODEL' is not declared
+
+ERROR : breach.as (line 368, column 14) :
+ 'SOLID_SOLID' is not declared
+
+ERROR : breach.as (line 369, column 19) :
+ 'CMODEL_BBOX_ROTATED' is not declared
+
+ERROR : breach.as (line 373, column 17) :
+ 'MOVE_TYPE_NONE' is not declared
+
+ERROR : breach.as (line 373, column 5) :
+ 'moveType' is not a member of 'cEntity'
+
+ERROR : breach.as (line 374, column 19) :
+ 'SVF_NOCLIENT' is not declared
+
+ERROR : breach.as (line 375, column 20) :
+ 'game' is not declared
+
+ERROR : breach.as (line 376, column 18) :
+ 'levelTime' is not declared
+
+INFO : breach.as (line 382, column 1) :
+ Compiling void GT_Frame()
+
+ERROR : breach.as (line 384, column 23) :
+ 'game' is not declared
+
+ERROR : breach.as (line 386, column 23) :
+ Illegal operation on 'int'
+
+ERROR : breach.as (line 387, column 11) :
+ 'inuse' is not a member of 'cEntity'
+
+ERROR : breach.as (line 387, column 7) :
+ Expression must be of boolean type
+
+ERROR : breach.as (line 390, column 10) :
+ 'className' is not a member of 'cEntity'
+
+ERROR : breach.as (line 390, column 7) :
+ Expression must be of boolean type
+
+ERROR : breach.as (line 394, column 10) :
+ 'className' is not a member of 'cEntity'
+
+ERROR : breach.as (line 394, column 7) :
+ Expression must be of boolean type
+* Failed to build the script breach
+Failed to initialize gametype: 'progs/gametypes/breach.gt'.
+-------------------------------------
+Connecting to loopback...
+loopback: challenge 10879
+player^7 connected from loopback
+loopback: client_connect
+
+^1
+^7testrotating
+
+Asking to download: sounds/nosound.wav
+Server refused download request: File not found
+Asking to download: sounds/misc/hit_water.wav
+Server refused download request: File not found
+Asking to download: sounds/world/movers/door_move.wav
+Server refused download request: File not found
+Asking to download: sounds/world/movers/elevator_move.wav
+Server refused download request: File not found
+trap_CM_NumInlineModels 4
+Created OcTree space partition with 1 nodes in 0 levels
+CG_ParseRotationBone: No such bone name Bip01 Spine2 in model soldier
+CG_SkeletalPoseLerpAttachment: Wrong model or boneposes tag_barrel
+player ^7entered the game
+]quit 
+==== G_Shutdown ====
+Shutting down sound system
+...releasing DS object
+...freeing DSOUND.DLL
+Cmd_RemoveCommand: +use not added
+Cmd_RemoveCommand: -use not added
