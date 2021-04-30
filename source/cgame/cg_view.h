@@ -16,3 +16,5 @@ typedef struct
 
 	qboolean drawWeapon;
 } cg_viewdef_t;
+
+void CG_RefreshTimeFracs( void );

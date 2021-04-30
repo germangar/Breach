@@ -48,7 +48,7 @@ static qboolean CG_WeaponObject_ParseAnimationScript( char *buf, weaponobject_t 
 {
 	char *ptr, *token;
 	int rounder, counter, i;
-	qboolean debug = qtrue;
+	qboolean debug = qfalse;
 	int anim_data[4][WEAPMODEL_MAXANIMS];
 
 	if( !buf )

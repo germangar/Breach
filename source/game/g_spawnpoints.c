@@ -141,7 +141,7 @@ static void G_SelectSpawnPoint( int team, vec3_t box_mins, vec3_t box_maxs, vec3
 {
 	gentity_t *spot = NULL;
 
-	while( ( spot = G_Find( spot, FOFS( classname ), "info_spawnpoint" ) ) != NULL )
+	while( ( spot = G_Find( spot, FOFFSET( gentity_t, classname ), "info_spawnpoint" ) ) != NULL )
 	{
 		if( team == spot->s.team )
 			break;
@@ -150,7 +150,7 @@ static void G_SelectSpawnPoint( int team, vec3_t box_mins, vec3_t box_maxs, vec3
 	if( !spot )
 	{
 		// no spawnpoint present, allow quake's classic "info_player_start" for any team
-		while( ( spot = G_Find( spot, FOFS( classname ), "info_player_start" ) ) != NULL )
+		while( ( spot = G_Find( spot, FOFFSET( gentity_t, classname ), "info_player_start" ) ) != NULL )
 		{
 			if( spot )
 				break;

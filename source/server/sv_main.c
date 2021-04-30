@@ -224,6 +224,7 @@ static qboolean SV_RunGameFrame( int msec )
 	static unsigned int accTime = 0;
 	qboolean refreshSnapshot;
 	qboolean refreshGameModule;
+	qboolean sentFragments;
 	int numEntities;
 
 	accTime += msec;
@@ -231,24 +232,29 @@ static qboolean SV_RunGameFrame( int msec )
 	refreshSnapshot = qfalse;
 	refreshGameModule = qfalse;
 
-	// see if it's time for a new snapshot
-	if( svs.gametime >= sv.nextSnapTime )
-	{
-		int extraTime;
-
-		refreshSnapshot = qtrue;
-		refreshGameModule = qtrue;
-		extraTime = (int)( svs.gametime - sv.nextSnapTime );
-		if( extraTime > WORLDFRAMETIME ) // don't let too much time be accumulated
-			extraTime = WORLDFRAMETIME;
-
-		// set time for next snapshot
-		sv.nextSnapTime = svs.gametime + ( svc.snapFrameTime - extraTime );
-	}
+	sentFragments = SV_SendClientsFragments();
 
 	// see if it's time to run a new game frame
 	if( accTime >= WORLDFRAMETIME )
 		refreshGameModule = qtrue;
+
+	// see if it's time for a new snapshot
+	if( !sentFragments && ( svs.gametime >= sv.nextSnapTime ) )
+	{
+		refreshGameModule = qtrue;
+		refreshSnapshot = qtrue;
+	}
+
+	// if there aren't pending packets to be sent, we can sleep
+	if( dedicated->integer && !sentFragments && !refreshSnapshot )
+	{
+		int sleeptime = min( WORLDFRAMETIME - ( accTime + 1 ), sv.nextSnapTime - ( svs.gametime + 1 ) );
+
+		clamp_low( sleeptime, 0 );
+
+		if( sleeptime > 0 )
+			NET_Sleep( sleeptime );
+	}
 
 	if( refreshGameModule )
 	{
@@ -270,34 +276,32 @@ static qboolean SV_RunGameFrame( int msec )
 		if( host_speeds->integer )
 			time_before_game = Sys_Milliseconds();
 
-		ge->RunFrame( WORLDFRAMETIME, svs.gametime );
+		ge->RunFrame( moduleTime, svs.gametime );
 
 		if( host_speeds->integer )
 			time_after_game = Sys_Milliseconds();
 	}
 
-	// if we don't have to send a snapshot we are done here
-	if( !refreshSnapshot )
+	if( refreshSnapshot )
 	{
-		// if there aren't pending fragments to be sent, we can sleep
-		if( !SV_SendClientsFragments() )
-		{
-			// FIXME: gametime might slower/faster than real time
-			if( dedicated->integer )
-			{
-				NET_Sleep( min( WORLDFRAMETIME - ( accTime + 1 ), sv.nextSnapTime - ( svs.gametime + 1 ) ) );
-			}
-		}
+		int extraSnapTime;
 
-		return qfalse;
+		// set up for sending a snapshot
+		sv.framenum++;
+		numEntities = ge->SnapFrame( sv.framenum );
+		SV_BackUpSnapshotData( sv.framenum, numEntities );
+
+		// set time for next snapshot
+		extraSnapTime = (int)( svs.gametime - sv.nextSnapTime );
+		if( extraSnapTime > svc.snapFrameTime * 0.5 ) // don't let too much time be accumulated
+			extraSnapTime = svc.snapFrameTime * 0.5;
+
+		sv.nextSnapTime = svs.gametime + ( svc.snapFrameTime - extraSnapTime );
+
+		return qtrue;
 	}
 
-	// set up for sending a snapshot
-	sv.framenum++;
-	numEntities = ge->SnapFrame( sv.framenum );
-	SV_BackUpSnapshotData( sv.framenum, numEntities );
-
-	return qtrue;
+	return qfalse;
 }
 
 //==================
@@ -342,7 +346,7 @@ static void SV_CheckAutoUpdate( void )
 		return;
 
 	// do not if there has been any activity in the last 2 hours
-	if( ( svc.last_activity + ( 3600000 * 2 ) ) > Sys_Milliseconds() )
+	if( ( svc.last_activity + 1800000 ) > Sys_Milliseconds() )
 		return;
 
 	days = (unsigned int)sv_lastAutoUpdate->integer;
@@ -594,10 +598,9 @@ void SV_FinalMessage( char *message, qboolean reconnect )
 
 			SV_InitClientMessage( cl, &tmpMessage, NULL, 0 );
 			SV_AddReliableCommandsToMessage( cl, &tmpMessage );
+			// send it twice
 			for( j = 0; j < 2; j++ )
-			{              // send it twice
 				SV_SendMessageToClient( cl, &tmpMessage );
-			}
 		}
 	}
 }

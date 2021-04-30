@@ -403,6 +403,8 @@ void CL_GameModule_EscapeKey( void )
 {
 	if( cge )
 		cge->EscapeKey();
+	else if( SCR_GetCinematicTime() )
+		SCR_FinishCinematic();
 }
 
 /*

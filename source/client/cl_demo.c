@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "client.h"
 
+#ifdef WSWCURL
+#include "../qcommon/wswcurl.h"
+#endif
 /*
 ====================
 CL_WriteDemoMessage
@@ -309,14 +312,44 @@ void CL_Record_f( void )
 //
 //================================================================
 
+#define DEMO_HTTP_OK			200
+#define DEMO_HTTP_READAHEAD		1024*50
 
 // demo file
 int demofilehandle;
-int demofilelen;
+static int demofilelen, demofilelentotal;
 
 // demo message
 qbyte msgbuf[MAX_MSGLEN];
 msg_t demomsg;
+
+#ifdef WSWCURL
+static wswcurl_req *democurlrequest;
+
+static void CL_CurlDemoDoneCallback( wswcurl_req *req, int status )
+{
+	if( req->respcode != DEMO_HTTP_OK )
+		Com_Printf( "No valid demo file found\n" );
+}
+
+static void CL_CurlDemoProgressCallback( wswcurl_req *req, double percentage )
+{
+	int offset = 0;
+
+	// flush data to disk
+	FS_Flush( req->filenum );
+
+	if( demofilehandle )
+	{
+		offset = FS_Tell( demofilehandle );
+		FS_FCloseFile( demofilehandle );
+	}
+
+	demofilelentotal = FS_FOpenFile( req->filename, &demofilehandle, FS_READ );
+	demofilelen = demofilelentotal;
+	FS_Seek( demofilehandle, offset, FS_SEEK_SET );
+}
+#endif
 
 /*
 =================
@@ -383,9 +416,27 @@ void CL_DemoCompleted( void )
 	{
 		FS_FCloseFile( demofilehandle );
 		demofilehandle = 0;
-		demofilelen = 0;
 	}
 
+	demofilelen = demofilelentotal = 0;
+#ifdef WSWCURL
+	if( democurlrequest )
+	{
+		char *tmpname = NULL;
+
+		if( democurlrequest->filename )
+			tmpname = TempCopyString( democurlrequest->filename );
+
+		wswcurl_delete( democurlrequest );
+		democurlrequest = NULL;
+
+		if( tmpname )
+		{
+			FS_RemoveFile( tmpname );
+			Mem_TempFree( tmpname );
+		}
+	}
+#endif
 	cls.demo.playing = qfalse;
 	cls.demo.basetime = cls.demo.duration = 0;
 
@@ -409,9 +460,14 @@ Read a packet from the demo file and send it to the messages parser
 */
 static void CL_ReadDemoMessage( void )
 {
-
-	int msglen;
-
+	int msglen, read;
+#ifdef WSWCURL
+	if( democurlrequest && democurlrequest->respcode && democurlrequest->respcode != DEMO_HTTP_OK )
+	{
+		CL_Disconnect( NULL );
+		return;
+	}
+#endif
 	if( !demofilehandle )
 	{
 		CL_Disconnect( NULL );
@@ -446,8 +502,9 @@ static void CL_ReadDemoMessage( void )
 		return;
 	}
 
-	FS_Read( msgbuf, msglen, demofilehandle );
-	demofilelen -= msglen;
+	read = FS_Read( msgbuf, msglen, demofilehandle );
+	if( read != msglen )
+		Com_Error( ERR_DROP, "Error reading demo file: End of file" );
 
 	demomsg.maxsize = sizeof( msgbuf );
 	demomsg.data = msgbuf;
@@ -467,7 +524,15 @@ See if it's time to read a new demo packet
 void CL_ReadDemoPackets( void )
 {
 	while( cls.demo.playing && ( cl.receivedSnapNum <= 0 || ( cl.snapShots[cl.receivedSnapNum & SNAPS_BACKUP_MASK].timeStamp < cl.serverTime ) ) )
+	{
+#ifdef WSWCURL
+		// if downloading via HTTP, wait until enough data arrives
+		if( democurlrequest && !democurlrequest->respcode 
+			&& (!demofilehandle || demofilelen < FS_Tell( demofilehandle ) + DEMO_HTTP_READAHEAD ) )
+			return;
+#endif
 		CL_ReadDemoMessage();
+	}
 
 	Cvar_ForceSet( "demoduration", va( "%i", (int)ceil( cls.demo.duration/1000.0f ) ) );
 	Cvar_ForceSet( "demotime", va( "%i", (int)floor( max( cl.snapShots[cl.receivedSnapNum & SNAPS_BACKUP_MASK].timeStamp - cls.demo.basetime,0 ) /1000.0f ) ) );
@@ -486,36 +551,68 @@ static void CL_StartDemo( const char *demoname )
 	size_t name_size;
 	char *name, *servername;
 	int tempdemofilehandle = 0, tempdemofilelen = -1;
+#ifdef WSWCURL
+	wswcurl_req *tempdemocurlrequest = NULL;
+#endif
 
 	// have to copy the argument now, since next actions will lose it
 	servername = TempCopyString( demoname );
 	COM_SanitizeFilePath( servername );
 
-	name_size = sizeof( char ) * ( strlen( "demos/" ) + strlen( servername ) + strlen( APP_DEMO_EXTENSION_STR ) + 1 );
-	name = Mem_TempMalloc( name_size );
-
-	// open the demo file
-	Q_snprintfz( name, name_size, "demos/%s", servername );
-	COM_DefaultExtension( name, APP_DEMO_EXTENSION_STR, name_size );
-	if( COM_ValidateRelativeFilename( name ) )
-		tempdemofilelen = FS_FOpenFile( name, &tempdemofilehandle, FS_READ );
-
-	if( !tempdemofilehandle || tempdemofilelen < 1 )
+	if( !strncmp( demoname, "http://", 7 ) )
 	{
-		// relative filename didn't work, try launching a demo from absolute path
-		Q_snprintfz( name, name_size, "%s", servername );
-		COM_DefaultExtension( name, APP_DEMO_EXTENSION_STR, name_size );
-		tempdemofilelen = FS_FOpenAbsoluteFile( name, &tempdemofilehandle, FS_READ );
+		int i;
 
+		// keep filenames random
+		name_size = sizeof( char ) * ( strlen( "demos/" ) + strlen( COM_FileBase( servername ) ) + 5 + strlen( ".tmp" ) + 1 );
+		name = Mem_TempMalloc( name_size );
+
+		for( i = 3; i > 0; i-- )
+		{
+			int randomizer;
+
+			randomizer = brandom( 0, 9999 );
+
+			Q_snprintfz( name, name_size, "demos/%s", COM_FileBase( servername ) );
+			COM_StripExtension( name );
+			Q_strncatz( name, va( "_%i.tmp", randomizer ), name_size );
+			if( FS_FOpenFile( name, NULL, FS_READ ) == -1 )
+				break;
+		}
+
+		if( !i )
+		{
+			Com_Printf( "Could not create temp file for demo\n" );
+			Mem_TempFree( name );
+			return;
+		}
 	}
-
-	if( !tempdemofilehandle || tempdemofilelen < 1 )
+	else
 	{
-		Com_Printf( "No valid demo file found\n" );
-		FS_FCloseFile( tempdemofilehandle );
-		Mem_TempFree( name );
-		Mem_TempFree( servername );
-		return;
+		name_size = sizeof( char ) * ( strlen( "demos/" ) + strlen( servername ) + strlen( APP_DEMO_EXTENSION_STR ) + 1 );
+		name = Mem_TempMalloc( name_size );
+
+		Q_snprintfz( name, name_size, "demos/%s", servername );
+		COM_DefaultExtension( name, APP_DEMO_EXTENSION_STR, name_size );
+		if( COM_ValidateRelativeFilename( name ) )
+			tempdemofilelen = FS_FOpenFile( name, &tempdemofilehandle, FS_READ );	// open the demo file
+
+		if( !tempdemofilehandle || tempdemofilelen < 1 )
+		{
+			// relative filename didn't work, try launching a demo from absolute path
+			Q_snprintfz( name, name_size, "%s", servername );
+			COM_DefaultExtension( name, APP_DEMO_EXTENSION_STR, name_size );
+			tempdemofilelen = FS_FOpenAbsoluteFile( name, &tempdemofilehandle, FS_READ );
+		}
+
+		if( !tempdemofilehandle || tempdemofilelen < 1 )
+		{
+			Com_Printf( "No valid demo file found\n" );
+			FS_FCloseFile( tempdemofilehandle );
+			Mem_TempFree( name );
+			Mem_TempFree( servername );
+			return;
+		}
 	}
 
 	// make sure a local server is killed
@@ -525,8 +622,11 @@ static void CL_StartDemo( const char *demoname )
 	memset( &cls.demo, 0, sizeof( cls.demo ) );
 
 	demofilehandle = tempdemofilehandle;
-	demofilelen = tempdemofilelen;
-
+	demofilelentotal = tempdemofilelen;
+	demofilelen = demofilelentotal;
+#ifdef WSWCURL
+	democurlrequest = tempdemocurlrequest;
+#endif
 	cls.servername = ZoneCopyString( COM_FileBase( servername ) );
 	COM_StripExtension( cls.servername );
 
@@ -611,14 +711,20 @@ void CL_DemoJump_f( void )
 
 	if( Cmd_Argv( 1 )[0] == '-' )
 		time = -time;
+#ifdef WSWCURL
+	if( democurlrequest && !democurlrequest->respcode && (relative ? time > 0 : (unsigned)time >= cls.gametime) )
+	{
+		Com_Printf( "Can not demojump forward while remote demo download is in progress\n" );
+		return;
+	}
+#endif
+	CL_SoundModule_StopAllSounds();
 
 	if( relative )
 		cls.gametime += time;
 	else
 		cls.gametime = time; // gametime always starts from 0
-
-	CL_SoundModule_StopAllSounds();
-
+	
 	if( cl.serverTime < cl.snapShots[cl.receivedSnapNum&SNAPS_BACKUP_MASK].timeStamp )
 		cl.pendingSnapNum = 0;
 
@@ -626,7 +732,7 @@ void CL_DemoJump_f( void )
 
 	if( cl.serverTime < cl.snapShots[cl.receivedSnapNum&SNAPS_BACKUP_MASK].timeStamp )
 	{
-		demofilelen += FS_Tell( demofilehandle );
+		demofilelen = demofilelentotal;
 		FS_Seek( demofilehandle, 0, FS_SEEK_SET );
 		cl.currentSnapNum = cl.receivedSnapNum = 0;
 	}

@@ -279,21 +279,16 @@ static void SV_Configstrings_f( client_t *client )
 	       client->reliableSequence - client->reliableAcknowledge < MAX_RELIABLE_COMMANDS - 8 )
 	{
 		if( sv.configstrings[start][0] )
-		{
 			SV_SendServerCommand( client, "cs %i \"%s\"", start, sv.configstrings[start] );
-		}
+		
 		start++;
 	}
 
 	// send next command
 	if( start == MAX_CONFIGSTRINGS )
-	{
 		SV_SendServerCommand( client, "cmd baselines %i 0", svs.spawncount );
-	}
 	else
-	{
 		SV_SendServerCommand( client, "cmd configstrings %i %i", svs.spawncount, start );
-	}
 }
 
 //==================
@@ -338,13 +333,9 @@ static void SV_Baselines_f( client_t *client )
 
 	// send next command
 	if( start == MAX_EDICTS )
-	{
 		SV_SendServerCommand( client, "precache %i", svs.spawncount );
-	}
 	else
-	{
 		SV_SendServerCommand( client, "cmd baselines %i %i", svs.spawncount, start );
-	}
 
 	SV_AddReliableCommandsToMessage( client, &tmpMessage );
 	SV_SendMessageToClient( client, &tmpMessage );

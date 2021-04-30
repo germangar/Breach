@@ -143,7 +143,7 @@ static size_t Con_BufferText( char *buffer, const char *delim )
 		if( buffer )
 		{
 			memcpy( buffer + length, line, x );
-			memcpy( buffer + length + x, delim, delim_len ); 
+			memcpy( buffer + length + x, delim, delim_len );
 		}
 
 		length += x + delim_len;
@@ -781,9 +781,9 @@ void Con_CompleteCommandLine( void )
 {
 	char *cmd = "";
 	char *s;
-	int c, v, a, i;
+	int c, v, a, ca, i;
 	int cmd_len;
-	char **list[4] = { 0, 0, 0, 0 };
+	char **list[5] = { 0, 0, 0, 0, 0 };
 
 	s = key_lines[edit_line] + 1;
 	if( *s == '\\' || *s == '/' )
@@ -795,14 +795,33 @@ void Con_CompleteCommandLine( void )
 	c = Cmd_CompleteCountPossible( s );
 	v = Cvar_CompleteCountPossible( s );
 	a = Cmd_CompleteAliasCountPossible( s );
+	ca = 0;
 
 	if( !( c + v + a ) )
-	{                   // No possible matches, let the user know they're insane
-		Com_Printf( "\nNo matching aliases, commands or cvars were found.\n\n" );
-		return;
+	{   
+		// now see if there's any valid cmd in there, providing
+		// a list of matching arguments
+		list[4] = Cmd_CompleteBuildArgList( s );
+		if( !list[4] )
+		{
+			// No possible matches, let the user know they're insane
+			Com_Printf( "\nNo matching aliases, commands or cvars were found.\n\n" );
+			return;
+		}
+
+		// count the number of matching arguments
+		for( ca = 0; list[4][ca]; ca++ );
+
+		if( !ca )
+		{
+			// the list is empty, although non-NULL list pointer suggests that the command
+			// exists, so clean up and exit without printing anything
+			Mem_TempFree( list[4] );
+			return;
+		}
 	}
 
-	if( c + v + a == 1 )
+	if( c + v + a + ca == 1 )
 	{
 		// find the one match to rule them all
 		if( c )
@@ -811,23 +830,29 @@ void Con_CompleteCommandLine( void )
 			list[0] = Cvar_CompleteBuildList( s );
 		else if( a )
 			list[0] = Cmd_CompleteAliasBuildList( s );
+		else
+			list[0] = list[4], list[4] = NULL;
 
 		cmd = *list[0];
 		cmd_len = (int)strlen( cmd );
 	}
 	else
 	{
+		int i_start = 0;
+
 		if( c )
 			cmd = *( list[0] = Cmd_CompleteBuildList( s ) );
 		if( v )
 			cmd = *( list[1] = Cvar_CompleteBuildList( s ) );
 		if( a )
 			cmd = *( list[2] = Cmd_CompleteAliasBuildList( s ) );
+		if( ca )
+			s = strstr( s, " " ) + 1, cmd = *( list[4] ), i_start = 4;
 
 		cmd_len = (int)strlen( s );
 		do
 		{
-			for( i = 0; i < 4; i++ )
+			for( i = i_start; i < 5; i++ )
 			{
 				char ch = cmd[cmd_len];
 				char **l = list[i];
@@ -839,10 +864,10 @@ void Con_CompleteCommandLine( void )
 						break;
 				}
 			}
-			if( i == 4 )
+			if( i == 5 )
 				cmd_len++;
 		}
-		while( i == 4 );
+		while( i == 5 );
 
 		// Print Possible Commands
 		if( c )
@@ -853,30 +878,61 @@ void Con_CompleteCommandLine( void )
 
 		if( v )
 		{
-			Com_Printf( S_COLOR_RED "%i possible variable%s%s\n", v, ( v > 1 ) ? "s: " : ":", S_COLOR_WHITE );
+			Com_Printf( S_COLOR_CYAN "%i possible variable%s%s\n", v, ( v > 1 ) ? "s: " : ":", S_COLOR_WHITE );
 			Con_DisplayList( list[1] );
 		}
 
 		if( a )
 		{
-			Com_Printf( S_COLOR_RED "%i possible alias%s%s\n", a, ( a > 1 ) ? "es: " : ":", S_COLOR_WHITE );
+			Com_Printf( S_COLOR_MAGENTA "%i possible alias%s%s\n", a, ( a > 1 ) ? "es: " : ":", S_COLOR_WHITE );
 			Con_DisplayList( list[2] );
+		}
+
+		if( ca )
+		{
+			Com_Printf( S_COLOR_YELLOW "%i possible argument%s%s\n", ca, ( ca > 1 ) ? "s: " : ":", S_COLOR_WHITE );
+			Con_DisplayList( list[4] );
 		}
 	}
 
 	if( cmd )
 	{
-		Q_strncpyz( key_lines[edit_line] + 1, cmd, sizeof( key_lines[edit_line] ) - 1 );
-		key_linepos = min( cmd_len + 1, sizeof( key_lines[edit_line] ) - 1 );
+		int skip = 1;
+		char *cmd_temp = NULL, *p;
+
+		if( ca )
+		{
+			size_t temp_size;
+
+			temp_size = sizeof( key_lines[edit_line] );
+			cmd_temp = Mem_TempMalloc( temp_size );
+
+			Q_strncpyz( cmd_temp, key_lines[edit_line] + skip, temp_size );
+			p = strstr( cmd_temp, " " );
+			if( p )
+				*(p+1) = '\0';
+
+			cmd_len += strlen( cmd_temp );
+
+			Q_strncatz( cmd_temp, cmd, temp_size );
+			cmd = cmd_temp;
+		}
+
+		Q_strncpyz( key_lines[edit_line] + skip, cmd, sizeof( key_lines[edit_line] ) - ( 1 + skip ) );
+		key_linepos = min( cmd_len + skip, sizeof( key_lines[edit_line] ) - 1 );
+
 		if( c + v + a == 1 && key_linepos < sizeof( key_lines[edit_line] ) - 1 )
 		{
 			key_lines[edit_line][key_linepos] = ' ';
 			key_linepos++;
 		}
 		key_lines[edit_line][key_linepos] = 0;
+
+		if( cmd == cmd_temp )
+			Mem_TempFree( cmd );
 	}
 
-	for( i = 0; i < 4; ++i )
+	for( i = 0; i < 5; ++i )
 	{
 		if( list[i] )
 			Mem_TempFree( list[i] );

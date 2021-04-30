@@ -61,6 +61,8 @@ typedef struct
 
 	unsigned int framemsecs;		// in milliseconds
 	unsigned int serverTime;		// actual time in the server
+
+	char name[MAX_STRING_CHARS];	// test
 } game_locals_t;
 
 #define GAMETYPE_PROJECT_EXTENSION ".gt"
@@ -99,12 +101,11 @@ typedef struct
 	unsigned int pausedTime;
 
 	char mapname[MAX_QPATH];        // the server name
-	char nextmap[MAX_QPATH];        // go here when match is finished
 	char forcemap[MAX_QPATH];       // go here
 
 	char *mapString;
 	size_t mapStrlen;
-	qboolean canSpawnEntities;				// security check. Don't init entities before map ones are ready
+	qboolean canSpawnEntities;		// security check. Don't init entities before map ones are ready
 
 	int farplanedist;               // forced cull minimum distance
 	int numLocalTargetNames;
@@ -113,58 +114,21 @@ typedef struct
 } level_locals_t;
 
 
-// spawn_temp_t is only used to hold entity field values that
-// can be set from the editor, but aren't actualy present
-// in gentity_t during gameplay
-typedef struct
-{
-	// world vars
-	float fov;
-	char *nextmap;
-
-	char *music;
-
-	int lip;
-	int distance;
-	int height;
-	float roll;
-	float radius;
-	float phase;
-	float pausetime;
-	char *item;
-	char *gravity;
-
-	float minyaw;
-	float maxyaw;
-	float minpitch;
-	float maxpitch;
-
-	char *team;
-
-	char *shader;
-
-	float anglehack;   // is only yaw, UP and DOWN
-	float speed;
-	float accel;
-	float scale;
-
-	int noents;
-	int farplanedist;     // worldspawn only
-	char *gametype;
-} spawn_temp_t;
-
-
 extern game_locals_t game;
 extern level_locals_t level;
-extern spawn_temp_t st;
 
 extern int meansOfDeath;
-
 
 #define	FOFS( x ) (size_t)&( ( (gentity_t *)0 )->x )
 #define	STOFS( x ) (size_t)&( ( (spawn_temp_t *)0 )->x )
 #define	LLOFS( x ) (size_t)&( ( (level_locals_t *)0 )->x )
 #define	CLOFS( x ) (size_t)&( ( (gclient_t *)0 )->x )
+// fixme: this should probably go into q_shared.h
+#if defined ( _WIN64 ) || ( __x86_64__ )
+#define FOFFSET(s,m)   (size_t)( (qintptr)&(((s *)0)->m) )
+#else
+#define FOFFSET(s,m)   (size_t)&(((s *)0)->m)
+#endif
 
 extern cvar_t *password;
 extern cvar_t *dedicated;
@@ -201,38 +165,14 @@ void G_asCallRunFrameScript( void );
 //
 // fields are needed for spawning from the entity string
 //
-#define FFL_SPAWNTEMP	    1
 
-typedef enum
-{
-	F_INT,
-	F_FLOAT,
-	F_LSTRING,      // string on disk, pointer in memory, TAG_LEVEL
-	F_GSTRING,      // string on disk, pointer in memory, TAG_GAME
-	F_VECTOR,
-	F_EDICT,        // index on disk, pointer in memory
-	F_ITEM,         // index on disk, pointer in memory
-	F_CLIENT,       // index on disk, pointer in memory
-	F_FUNCTION,
-	F_IGNORE
-} fieldtype_t;
-
-typedef struct
-{
-	const char *name;
-	size_t ofs;
-	fieldtype_t type;
-	int flags;
-} field_t;
-
-extern const field_t fields[];
 extern struct gentity_s *worldEntity;
 
 //
 // g_cmds.c
 //
 qboolean G_CheckFlood( gentity_t *ent );
-void G_InitGameCommands( void );
+void G_PrecacheGameCommands( void );
 void G_AddCommand( char *name, void *cmdfunc );
 void G_ClientCommand( int clientNum );
 
@@ -250,7 +190,7 @@ extern qboolean G_Item_AddToInventory( gentity_t *ent, gsitem_t *item, int count
 //
 // g_utils.c
 //
-#define		G_LEVEL_DEFAULT_POOL_SIZE	128 * 1024
+#define G_LEVELPOOL_BASE_SIZE	5 * 1024 * 1024
 
 qboolean    KillBox( gentity_t *ent );
 gentity_t *G_Find( gentity_t *from, size_t fieldofs, char *match );
@@ -277,9 +217,9 @@ void	G_AddEvent( gentity_t *ent, int event, int parm, qboolean highPriority );
 gentity_t *G_SpawnEvent( int event, int parm, vec3_t origin );
 void	G_TurnEntityIntoEvent( gentity_t *ent, int event, int parm );
 
-void	G_PrintMsg( gentity_t *ent, const char *format, ... );
-void	G_ChatMsg( gentity_t *ent, const char *format, ... );
-void	G_CenterPrintMsg( gentity_t *ent, const char *format, ... );
+void G_PrintMsg( gclient_t *client, const char *format, ... );
+void G_ChatMsg( gclient_t *client, const char *format, ... );
+void G_CenterPrintMsg( gclient_t *client, const char *format, ... );
 extern void G_Sound( gentity_t *ent, int channel, int soundindex, float attenuation );
 extern void G_PositionedSound( vec3_t origin, int channel, int soundindex, float attenuation );
 extern void G_AnnouncerSound( gentity_t *target, int soundindex, int team, qboolean queued, gentity_t *ignore );
@@ -291,7 +231,7 @@ char *G_ListNameForPosition( const char *namesList, int position, const char sep
 char *G_AllocCreateNamesList( const char *path, const char *extension, const char separator );
 extern game_locals_t game;
 #define ENTNUM( x ) ( ( ( x ) != NULL ) ? ( ( x ) - game.entities ) : -1 )
-#define CLIENTNUM( x ) ( ( x ) - game.clients )
+#define CLIENTNUM( x ) ( ( ( x ) != NULL ) ? ( ( x ) - game.clients ) : -1 )
 void	G_ReleasePlayerStateEvent( gclient_t *client );
 void	G_AddPlayerStateEvent( gclient_t *client, int event, int parm );
 void	G_ClearPlayerStateEvents( gclient_t *client );
@@ -300,10 +240,12 @@ extern int G_ConfigstringIndex( const char *newString, int initial, int max );
 extern int G_PlayerObjectIndex( const char *name );
 extern int G_WeaponObjectIndex( const char *name );
 
-void	G_LevelInitPool( size_t size );
-void	G_LevelFreePool( void );
-void	*_G_LevelMalloc( size_t size, const char *filename, int fileline );
-void	_G_LevelFree( void *data, const char *filename, int fileline );
+void G_LevelInitPool( size_t size );
+void G_LevelFreePool( void );
+void *_G_LevelMalloc( size_t size, const char *filename, int fileline );
+void _G_LevelFree( void *data, const char *filename, int fileline );
+//char *_G_LevelCopyString( const char *in, const char *filename, int fileline );
+void G_LevelGarbageCollect( void );
 
 //
 // g_trigger.c
@@ -386,8 +328,8 @@ void G_RunPhysicsTick( gentity_t *ent, vec3_t accel, unsigned int msecs );
 #define G_Malloc( size ) trap_MemAlloc( size, __FILE__, __LINE__ )
 #define G_Free( data ) trap_MemFree( data, __FILE__, __LINE__ )
 
-#define	G_LevelMalloc(size) _G_LevelMalloc((size),__FILE__,__LINE__)
-#define	G_LevelFree(data) _G_LevelFree((data),__FILE__,__LINE__)
+#define	G_LevelMalloc( size ) _G_LevelMalloc( ( size ), __FILE__, __LINE__ )
+#define	G_LevelFree( data ) _G_LevelFree( ( data ), __FILE__, __LINE__ )
 
 int		G_API( void );
 void	G_Init( unsigned int seed, unsigned int maxclients, unsigned int framemsec, int protocol );
@@ -418,11 +360,15 @@ void G_PlayerClass_RegisterClasses( void );
 //
 // g_spawn.c
 //
-qboolean G_CallSpawn( gentity_t *ent );
-void G_InitLevel( const char *mapname, const char *entities, int len, unsigned int serverTime );
+const char *G_GetEntitySpawnKey( const char *key, gentity_t *self );
+qboolean G_SpawnEntity( gentity_t *ent );
+qboolean G_ParseEntity( const char **entitiesData );
 
 void G_info_player_start( gentity_t *ent );
 void G_Spawnpoint_Spawn( gentity_t *ent );
+
+// g_level.c
+void G_InitLevel( const char *mapname, const char *entities, int len, unsigned int serverTime );
 
 //============================================================================
 
@@ -540,6 +486,8 @@ struct gclient_s
 	int timeDeltas[G_MAX_TIME_DELTAS];
 	int timeDeltasHead;
 
+	int asRefCount, asFactored;
+
 #ifdef UCMDTIMENUDGE
 	int ucmdTimeNudge;
 #endif
@@ -549,9 +497,7 @@ struct gclient_s
 #define	SVF_NOCLIENT	    0x00000001  // don't send entity to clients, even if it has effects
 #define SVF_PORTAL	    0x00000002  // merge PVS at old_origin
 #define SVF_BROADCAST	    0x00000004  // always transmit
-#define SVF_CORPSE	    0x00000008  // treat as CONTENTS_CORPSE for collision
-#define SVF_UNUSED01	    0x00000010  // sets ms.solid to SOLID_NOT for prediction
-#define SVF_ONLYTEAM	    0x00000020  // this entity is only transmited to clients with the same ent->ms.team value
+#define SVF_ONLYTEAM	    0x00000008  // this entity is only transmited to clients with the same ent->ms.team value
 
 #define	MAX_ENT_CLUSTERS    16
 
@@ -590,6 +536,8 @@ struct gentity_s
 	snap_edict_t snap; // information that is cleared each frame snap
 	entity_vis_t vis;   // visibility information for snapshot culling
 
+	qboolean transmitted;
+
 	int spawnflags;
 	int netflags;                   // SVF_NOCLIENT, etc
 
@@ -598,6 +546,7 @@ struct gentity_s
 	moveenvironment_t env;
 
 	const char *classname;
+	const char *spawnString;			// keep track of string definition of this entity
 
 	char *target;
 	char *targetname;
@@ -634,7 +583,7 @@ struct gentity_s
 	void ( *think )( gentity_t *self );
 	void ( *touch )( gentity_t *self, gentity_t *other, cplane_t *plane, int surfFlags );
 	void ( *activate )( gentity_t *self, gentity_t *other, gentity_t *activator );
-	void ( *pain )( gentity_t *self, gentity_t *other, float kick, int damage );
+	void ( *pain )( gentity_t *self, gentity_t *other, float kick, float damage );
 	void ( *blocked )( gentity_t *self, gentity_t *obstacle );
 	void ( *die )( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, int damage );
 	void ( *closeSnap )( gentity_t *ent );
@@ -656,6 +605,7 @@ struct gentity_s
 
 	// scripts
 	int asRefCount, asFactored;
+	int asSpawnFuncID, asThinkFuncID, asActivateFuncID, asTouchFuncID, asPainFuncID, asBlockedFuncID, asDieFuncID, asStopFuncID;
 };
 
 #include "g_projectiles.h"

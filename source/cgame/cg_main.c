@@ -30,6 +30,9 @@ cvar_t *cg_zoomSens;
 
 cvar_t *cg_drawEntityBoxes;
 
+cvar_t *cg_playList;
+cvar_t *cg_playListShuffle;
+
 
 //============
 //CG_API
@@ -119,6 +122,9 @@ static void CG_RegisterVariables( void )
 #endif
 
 	developer = trap_Cvar_Get( "developer", "0", CVAR_CHEAT );
+
+	cg_playList = trap_Cvar_Get( "cg_playList", "sounds/music/playlist.m3u", CVAR_ARCHIVE );
+	cg_playListShuffle = trap_Cvar_Get( "cg_playListShuffle", "1", CVAR_ARCHIVE );
 }
 
 //============

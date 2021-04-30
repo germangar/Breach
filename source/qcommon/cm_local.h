@@ -76,6 +76,7 @@ typedef struct
 
 	int nummarkfaces;
 	cface_t	**markfaces;
+	vec3_t markfaces_mins, markfaces_maxs;
 } cleaf_t;
 
 typedef struct cmodel_s

@@ -791,7 +791,6 @@ void CL_NewUserCommand( int realmsec )
 	// control cinematics by buttons
 	if( ucmd->buttons && SCR_GetCinematicTime() > 0 && cls.realtime > 1000 + SCR_GetCinematicTime() )
 	{
-		SCR_StopCinematic();
 		SCR_FinishCinematic();
 		SCR_UpdateScreen();
 	}

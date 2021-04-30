@@ -92,25 +92,6 @@ int Cvar_Integer( const char *var_name )
 }
 
 /*
-* Cvar_Complete
-* Attempts to match a partial variable name for command line completion.
-* Returns NULL if nothing fits
-*/
-char *Cvar_Complete( const char *partial )
-{
-	cvar_t *cvar;
-	assert( cvar_trie );
-	if( *partial && Trie_Find( cvar_trie, partial, TRIE_PREFIX_MATCH, (void **)&cvar ) == TRIE_OK )
-	{
-		assert( cvar );
-		return cvar->name;
-	}
-	else
-		return NULL;
-}
-
-
-/*
 * Cvar_Get
 * Creates the variable if it doesn't exist.
 * If the variable already exists, the value will not be set

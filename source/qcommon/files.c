@@ -806,7 +806,7 @@ static int FS_FileExists( const char *filename, qboolean base )
 FS_AbsoluteFileExists
 ==============
 */
-int FS_AbsoluteFileExists( const char *filename )
+static int FS_AbsoluteFileExists( const char *filename )
 {
 	FILE *f;
 
@@ -1100,6 +1100,8 @@ void FS_FCloseFile( int file )
 		return; // return silently
 
 	fh = FS_FileHandleForNum( file );
+	fh->restReadUncompressed = 0;
+
 	if( fh->zipEntry )
 	{
 		inflateEnd( &fh->zipEntry->zstream );
@@ -1221,6 +1223,8 @@ int FS_Read( void *buffer, size_t len, int file )
 	size_t total;
 
 	fh = FS_FileHandleForNum( file );
+	if( !fh->fstream )
+		return 0;
 
 	// read in chunks for progress bar
 	if( len > fh->restReadUncompressed )
@@ -1287,6 +1291,9 @@ int FS_Write( const void *buffer, size_t len, int file )
 	if( fh->zipEntry )
 		Sys_Error( "FS_Write: writing to compressed file" );
 
+	if( !fh->fstream )
+		return 0;
+
 	buf = ( qbyte * )buffer;
 	if( !buf )
 		return 0;
@@ -1333,7 +1340,7 @@ int FS_Tell( int file )
 
 /*
 ============
-FS_Tell
+FS_Seek
 ============
 */
 int FS_Seek( int file, int offset, int whence )
@@ -1345,6 +1352,9 @@ int FS_Seek( int file, int offset, int whence )
 	qbyte buf[FS_ZIP_BUFSIZE * 4];
 
 	fh = FS_FileHandleForNum( file );
+	if( !fh->fstream )
+		return 0;
+
 	currentOffset = fh->uncompressedSize - fh->restReadUncompressed;
 
 	if( whence == FS_SEEK_CUR )
@@ -2508,63 +2518,81 @@ static pack_t *FS_LoadPackFile( const char *packfilename, qboolean silent )
 	return NULL;
 }
 
+
 /*
 =================
-FS_AddPackFile
+FS_FindPackFilePos
 
-Add a PAK file at the end of the tree
+Find the right position for a newly added pak file
 =================
 */
-static void FS_AddPackFile( pack_t *pak, qboolean append )
+static qboolean FS_FindPackFilePos( const char *filename, searchpath_t **psearch, searchpath_t **pprev, searchpath_t **pnext )
 {
 	const char *fullname;
 	searchpath_t *search, *compare, *prev;
 	size_t path_size;
 	qboolean founddir;
 
-	fullname = pak->filename;
+	fullname = filename;
 	path_size = sizeof( char ) * ( COM_FilePathLength( fullname ) + 1 );
 
 	search = FS_Malloc( sizeof( searchpath_t ) );
-	search->pack = pak;
 	search->path = FS_Malloc( path_size );
-	Q_strncpyz( search->path, pak->filename, path_size );
+	Q_strncpyz( search->path, filename, path_size );
+
+	if( psearch )
+		*psearch = NULL;
+	if( pprev )
+		*pprev = NULL;
+	if( pnext )
+		*pnext = NULL;
 
 	prev = NULL;
 	compare = fs_searchpaths;
-	if( !append )
+
+	// find the right position
+	founddir = qfalse;
+	while( compare )
 	{
-		// find the right position
-		founddir = qfalse;
-		while( compare )
+		int cmp = 0;
+
+		if( compare->pack )
 		{
-			if( !strcmp( compare->path, search->path ) )
+			cmp = Q_stricmp( COM_FileBase( compare->pack->filename ), COM_FileBase( filename ) );
+			if( !cmp )
 			{
-				if( compare->pack && Q_stricmp( COM_FileBase( compare->pack->filename ), COM_FileBase( search->pack->filename ) ) < 0 )
-					break;
-				if( !founddir )
-					founddir = qtrue;
+				Mem_Free( search );
+				return qfalse;
 			}
-			else if( founddir )
-			{
-				break;
-			}
-
-			prev = compare;
-			compare = compare->next;
 		}
+
+		if( !Q_stricmp( compare->path, search->path ) )
+		{
+			if( compare->pack && cmp < 0 )
+				break;
+			if( !founddir )
+				founddir = qtrue;
+		}
+		else if( founddir )
+		{
+			break;
+		}
+
+		prev = compare;
+		compare = compare->next;
 	}
 
-	if( !prev )
-	{
-		search->next = fs_searchpaths;
-		fs_searchpaths = search;
-	}
+	if( psearch )
+		*psearch = search;
 	else
-	{
-		prev->next = search;
-		search->next = compare;
-	}
+		Mem_Free( search );
+
+	if( pprev )
+		*pprev = prev;
+	if( pnext )
+		*pnext = compare;
+
+	return qtrue;
 }
 
 /*
@@ -3263,9 +3291,22 @@ static int FS_TouchGamePath( const char *basepath, const char *gamedir, qboolean
 {
 	int i, totalpaks, newpaks;
 	size_t path_size;
-	searchpath_t *search;
+	searchpath_t *search, *prev, *next;
 	pack_t *pak;
 	char **paknames;
+
+	// add directory to the list of search paths so pak files can stack properly
+	if( initial )
+	{
+		search = FS_Malloc( sizeof( searchpath_t ) );
+
+		path_size = sizeof( char ) * ( strlen( basepath ) + 1 + strlen( gamedir ) + 1 );
+		search->path = FS_Malloc( path_size );
+		Q_snprintfz( search->path, path_size, "%s/%s", basepath, gamedir );
+
+		search->next = fs_searchpaths;
+		fs_searchpaths = search;
+	}
 
 	newpaks = 0;
 	totalpaks = 0;
@@ -3289,29 +3330,37 @@ static int FS_TouchGamePath( const char *basepath, const char *gamedir, qboolean
 				compare = compare->next;
 			}
 
+			if( !FS_FindPackFilePos( paknames[i], NULL, NULL, NULL ) )
+			{
+				// well, we couldn't find a suitable position for this pak file, probably because
+				// it's going to be overriden by a similarly named file elsewhere
+				continue;
+			}
+
 			pak = FS_LoadPackFile( paknames[i], qfalse );
 			if( !pak )
 				goto freename;
 
-			newpaks++;
-			FS_AddPackFile( pak, qtrue );
+			// now insert it for real
+			if( FS_FindPackFilePos( paknames[i], &search, &prev, &next ) )
+			{
+				search->pack = pak;
+				if( !prev )
+				{
+					search->next = fs_searchpaths;
+					fs_searchpaths = search;
+				}
+				else
+				{
+					prev->next = search;
+					search->next = next;
+				}
+				newpaks++;
+			}
 freename:
 			Mem_ZoneFree( paknames[i] );
 		}
 		Mem_ZoneFree( paknames );
-	}
-
-	// add the directory to the search path if initial
-	if( initial )
-	{
-		search = FS_Malloc( sizeof( searchpath_t ) );
-
-		path_size = sizeof( char ) * ( strlen( basepath ) + 1 + strlen( gamedir ) + 1 );
-		search->path = FS_Malloc( path_size );
-		Q_snprintfz( search->path, path_size, "%s/%s", basepath, gamedir );
-
-		search->next = fs_searchpaths;
-		fs_searchpaths = search;
 	}
 
 	return newpaks;
@@ -3400,6 +3449,8 @@ static int FS_TouchGameDirectory( const char *gamedir, qboolean initial )
 		prev = basepath;
 	}
 
+	// FIXME: remove the initial check?
+	// not sure whether removing pak files on the fly is such a good idea
 	if( initial && newpaks )
 		FS_RemoveExtraPaks( old );
 
@@ -3488,16 +3539,25 @@ qboolean FS_SetGameDirectory( const char *dir, qboolean force )
 		FS_AddGameDirectory( dir );
 	}
 
-	// flush all data, so it will be forced to reload
-	if( !dedicated || !dedicated->integer )
+	// if game directory is present but we haven't initialized filesystem yet,
+	// that means fs_game was set via early commands and autoexec.cfg (and confi.cfg in the 
+	// case of client) will be executed in Qcommon_Init, so prevent double execution
+	if( fs_initialized )
 	{
-		Cbuf_AddText( "s_restart 1\nin_restart\n" );
-		Cbuf_AddText( "exec autoexec.cfg\n" );
+		if( !dedicated || !dedicated->integer )
+		{
+			Cbuf_AddText( "exec config.cfg\n" );
+			Cbuf_AddText( "exec autoexec.cfg\n" );
+
+			// flush all data, so it will be forced to reload
+			Cbuf_AddText( "s_restart 1\nin_restart\n" );
+		}
+		else
+		{
+			Cbuf_AddText( "exec dedicated_autoexec.cfg\n" );
+		}
 	}
-	else
-	{
-		Cbuf_AddText( "exec dedicated_autoexec.cfg\n" );
-	}
+
 	Cbuf_Execute();
 
 	return qtrue;

@@ -21,6 +21,7 @@ void G_InitEntity( gentity_t *ent )
 	ent->classname = noclassname;
 	ent->timestamp = level.time;
 	ent->env.groundentity = ENTITY_INVALID;
+	ent->asSpawnFuncID = ent->asThinkFuncID = ent->asTouchFuncID = ent->asActivateFuncID = ent->asPainFuncID = ent->asBlockedFuncID = ent->asDieFuncID = ent->asStopFuncID = -1;
 
 	if( ent->s.number >= 0 && ent->s.number < gs.maxclients )
 		ent->client = game.clients + ent->s.number;
@@ -31,16 +32,21 @@ void G_InitEntity( gentity_t *ent )
 */
 void G_FreeEntity( gentity_t *ent )
 {
-	qboolean evt = ISEVENTENTITY( &ent->s );
+	qboolean instantRelease = !ent->transmitted;
+
+	if( ISEVENTENTITY( &ent->s ) ) // event entities don't need to wait
+		instantRelease = qtrue;
+
+	if( level.mapTimeStamp == game.serverTime ) // everything can be reused during initialization
+		instantRelease = qtrue;
 
 	GClip_UnlinkEntity( ent );
 
 	G_InitEntity( ent );
-	ent->freetimestamp = trap_Milliseconds();
 	ent->s.local.inuse = qfalse;
 
-	if( evt || level.mapTimeStamp == game.serverTime )
-		ent->freetimestamp = 0; // ET_EVENT or ET_SOUND don't need to wait to be reused
+	if( !instantRelease )
+		ent->freetimestamp = trap_Milliseconds();
 }
 
 /*
@@ -149,7 +155,7 @@ char *G_GenerateLocalTargetName( void )
 {
 	static char localTargetName[16];
 
-	Q_snprintfz( localTargetName, sizeof( localTargetName ), "awsedrftgyhu_%i", level.numLocalTargetNames );
+	Q_snprintfz( localTargetName, sizeof( localTargetName ), "localtargetmnbvcxz_%i", level.numLocalTargetNames );
 	level.numLocalTargetNames++;
 	return localTargetName;
 }
@@ -181,7 +187,7 @@ void G_ActivateTargets( gentity_t *ent, gentity_t *activator )
 	if( ent->s.local.inuse && ent->target && ent->target[0] )
 	{
 		target = NULL;
-		while( ( target = G_Find( target, FOFS( targetname ), ent->target ) ) )
+		while( ( target = G_Find( target, FOFFSET( gentity_t, targetname ), ent->target ) ) )
 		{
 			if( target->activate )
 			{
@@ -211,7 +217,7 @@ void G_ActivateTargets( gentity_t *ent, gentity_t *activator )
 	if( ent->s.local.inuse && ent->killtarget && ent->killtarget[0] )
 	{
 		target = NULL;
-		while( ( target = G_Find( target, FOFS( targetname ), ent->killtarget ) ) )
+		while( ( target = G_Find( target, FOFFSET( gentity_t, targetname ), ent->killtarget ) ) )
 		{
 			if( target->s.local.inuse )
 			{

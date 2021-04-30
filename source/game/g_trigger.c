@@ -76,6 +76,8 @@ static void G_Trigger_WaterBlend_Touch( gentity_t *trigger, gentity_t *other, cp
 //=================
 void G_Trigger_WaterBlend_Spawn( gentity_t *ent )
 {
+	const char *s;
+
 	GClip_SetBrushModel( ent, ent->model );
 
 	ent->s.type = ET_TRIGGER;
@@ -85,12 +87,13 @@ void G_Trigger_WaterBlend_Spawn( gentity_t *ent )
 	ent->s.team = TEAM_NOTEAM;
 	ent->wait = 0;
 
-	if( st.shader )
-		ent->count = trap_ImageIndex( st.shader );
+	s = G_GetEntitySpawnKey( "shader", ent );
+	if( s[0] )
+		ent->count = trap_ImageIndex( s );
 
 	if( !ent->count )
 	{
-		GS_Printf( "WARNING: G_Trigger_WaterBlend_Spawn: couldn't find shader %s. Inhibited\n", st.shader );
+		GS_Printf( "WARNING: G_Trigger_WaterBlend_Spawn: couldn't find shader %s. Inhibited\n", s );
 		G_FreeEntity( ent );
 		return;
 	}

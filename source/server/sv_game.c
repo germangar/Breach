@@ -87,7 +87,7 @@ static void PF_ServerCmd( int clientNum, char *cmd )
 {
 	client_t *client;
 
-	client = ( clientNum >= 0 || clientNum < sv_maxclients->integer ) ? &svs.clients[clientNum] : NULL;
+	client = ( clientNum < 0 || clientNum >= sv_maxclients->integer ) ? NULL : &svs.clients[ clientNum ];
 	SV_SendServerCommand( client, cmd );
 }
 
@@ -197,17 +197,7 @@ static void PF_Configstring( int index, const char *val )
 	Q_strncpyz( sv.configstrings[index], cstring, sizeof( sv.configstrings[index] ) );
 
 	if( sv.state != ss_loading )
-	{
-		// We have to manually broadcast this one.
-		client_t *client;
-		int i;
-		for( i = 0, client = svs.clients; i < sv_maxclients->integer; i++, client++ )
-		{
-			if( client->state < CS_CONNECTED )
-				continue;
-			SV_SendServerCommand( client, "cs %i \"%s\"", index, sv.configstrings[index] );
-		}
-	}
+		SV_SendServerCommand( NULL, "cs %i \"%s\"", index, sv.configstrings[index] );
 }
 
 /*

@@ -32,10 +32,8 @@
 
 //=============================================================================
 
-#ifdef SMOOTHSERVERTIME
 #define MAX_TIMEDELTAS_BACKUP 8
 #define MASK_TIMEDELTAS_BACKUP ( MAX_TIMEDELTAS_BACKUP - 1 )
-#endif
 
 //
 // the client_state_t structure is wiped completely at every
@@ -84,9 +82,7 @@ typedef struct
 	// and teleport direction changes
 	vec3_t viewangles;
 
-#ifdef SMOOTHSERVERTIME
 	int serverTimeDeltas[MAX_TIMEDELTAS_BACKUP];
-#endif
 	int newServerTimeDelta;         // the time difference with the server time, or at least our best guess about it
 	int serverTimeDelta;         // the time difference with the server time, or at least our best guess about it
 	unsigned int serverTime;    // the best match we can guess about current time in the server
@@ -157,6 +153,7 @@ typedef struct
 	// web download
 	qboolean web;
 	qboolean disconnect;            // set when user tries to disconnect, to allow cleaning up webdownload
+	qboolean pending_reconnect;		// set when we ignored a map change command to avoid stopping the download
 } download_t;
 
 typedef struct
@@ -303,6 +300,7 @@ extern cvar_t *cl_download_allow_modules;
 // cl_cin.c
 //
 void SCR_InitCinematic( void );
+qboolean SCR_ValidCinematic( void );
 unsigned int SCR_GetCinematicTime( void );
 qboolean SCR_DrawCinematic( void );
 void SCR_RunCinematic( void );
@@ -320,8 +318,8 @@ void CL_UpdateClientCommandsToServer( msg_t *msg );
 void CL_AddReliableCommand( /*const*/ char *cmd );
 void CL_Netchan_Transmit( msg_t *msg );
 void CL_SendMessagesToServer( qboolean sendNow );
-
 void CL_AdjustServerTime( unsigned int gamemsec );
+void CL_RestartTimeDeltas( unsigned int newTimeDelta );
 
 qboolean CL_DownloadRequest( const char *filename, qboolean requestpak );
 void CL_DownloadStatus_f( void );
@@ -353,7 +351,7 @@ void CL_ServerDisconnect_f( void );
 //
 // cl_ents.c
 //
-void CL_ParseFrame( msg_t *msg );
+snapshot_t *CL_ParseSnapshot( msg_t *msg );
 
 
 //
@@ -525,3 +523,4 @@ extern float scr_conlines;       // lines of console to display
 //
 void VID_NewWindow( int width, int height );
 qboolean VID_GetModeInfo( int *width, int *height, qboolean *wideScreen, int mode );
+int	VID_GetModeNum( int width, int height );

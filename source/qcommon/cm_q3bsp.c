@@ -632,6 +632,8 @@ static void CMod_LoadLeafs( cmodel_state_t *cms, lump_t *l )
 		for( j = 0; j < out->nummarkbrushes; j++ )
 			out->contents |= out->markbrushes[j]->contents;
 
+		ClearBounds( out->markfaces_mins, out->markfaces_maxs );
+
 		// exclude markfaces that have no facets
 		// so we don't perform this check at runtime
 		for( j = 0; j < out->nummarkfaces; )
@@ -644,6 +646,11 @@ static void CMod_LoadLeafs( cmodel_state_t *cms, lump_t *l )
 					memmove( &out->markfaces[k], &out->markfaces[j], ( out->nummarkfaces - j ) * sizeof( *out->markfaces ) );
 				out->nummarkfaces -= j - k;
 
+			}
+			else
+			{
+				AddPointToBounds( out->markfaces[j]->mins, out->markfaces_mins, out->markfaces_maxs );
+				AddPointToBounds( out->markfaces[j]->maxs, out->markfaces_mins, out->markfaces_maxs );
 			}
 			j = k + 1;
 		}

@@ -21,10 +21,223 @@
 
 #include "g_local.h"
 
+/*
+==============================================================================
 
-static qbyte	*levelpool = NULL;			// Vic: I'm tempted to rename this to liverpool...
-static size_t	levelpool_size = 0;
-static size_t	levelpool_pointer = 0;
+						ZONE MEMORY ALLOCATION
+
+There is never any space between memblocks, and there will never be two
+contiguous free memblocks.
+
+The rover can be left pointing at a non-empty block.
+
+Ported over from Quake 1 and Quake 3.
+==============================================================================
+*/
+
+#define TAG_FREE	0
+#define TAG_LEVEL	1
+
+#define	ZONEID		0x1d4a11
+#define MINFRAGMENT 64
+
+typedef struct memblock_s
+{
+	int		size;           // including the header and possibly tiny fragments
+	int     tag;            // a tag of 0 is a free block
+	struct memblock_s       *next, *prev;
+	int     id;        		// should be ZONEID
+} memblock_t;
+
+typedef struct
+{
+	int		size;		// total bytes malloced, including header
+	int		count, used;
+	memblock_t	blocklist;		// start / end cap for linked list
+	memblock_t	*rover;
+} memzone_t;
+
+static memzone_t *levelzone;
+
+/*
+* G_Z_ClearZone
+*/
+static void G_Z_ClearZone( memzone_t *zone, int size )
+{
+	memblock_t	*block;
+	
+	// set the entire zone to one free block
+	zone->blocklist.next = zone->blocklist.prev = block =
+		(memblock_t *)( (qbyte *)zone + sizeof(memzone_t) );
+	zone->blocklist.tag = 1;	// in use block
+	zone->blocklist.id = 0;
+	zone->blocklist.size = 0;
+	zone->size = size;
+	zone->rover = block;
+	zone->used = 0;
+	zone->count = 0;
+
+	block->prev = block->next = &zone->blocklist;
+	block->tag = 0;			// free block
+	block->id = ZONEID;
+	block->size = size - sizeof(memzone_t);
+}
+
+/*
+* G_Z_Free
+*/
+static void G_Z_Free( void *ptr, const char *filename, int fileline )
+{
+	memblock_t *block, *other;
+	memzone_t *zone;
+
+	if (!ptr)
+		GS_Error( "G_Z_Free: NULL pointer" );
+
+	block = (memblock_t *) ( (qbyte *)ptr - sizeof(memblock_t));
+	if( block->id != ZONEID )
+		GS_Error( "G_Z_Free: freed a pointer without ZONEID (file %s at line %i)", filename, fileline );
+	if( block->tag == 0 )
+		GS_Error( "G_Z_Free: freed a freed pointer (file %s at line %i)", filename, fileline );
+
+	// check the memory trash tester
+	if ( *(int *)((qbyte *)block + block->size - 4 ) != ZONEID )
+		GS_Error( "G_Z_Free: memory block wrote past end" );
+
+	zone = levelzone;
+	zone->used -= block->size;
+	zone->count--;
+
+	block->tag = 0;		// mark as free
+
+	other = block->prev;
+	if( !other->tag )
+	{
+		// merge with previous free block
+		other->size += block->size;
+		other->next = block->next;
+		other->next->prev = other;
+		if( block == zone->rover )
+			zone->rover = other;
+		block = other;
+	}
+
+	other = block->next;
+	if( !other->tag )
+	{
+		// merge the next free block onto the end
+		block->size += other->size;
+		block->next = other->next;
+		block->next->prev = block;
+		if( other == zone->rover )
+			zone->rover = block;
+	}
+}
+
+/*
+* G_Z_TagMalloc
+*/
+static void *G_Z_TagMalloc( int size, int tag, const char *filename, int fileline )
+{
+	int extra;
+	memblock_t *start, *rover, *new, *base;
+	memzone_t *zone;
+
+	if( !tag )
+		GS_Error( "G_Z_TagMalloc: tried to use a 0 tag (file %s at line %i)", filename, fileline );
+
+	//
+	// scan through the block list looking for the first free block
+	// of sufficient size
+	//
+	size += sizeof(memblock_t);	// account for size of block header
+	size += 4;					// space for memory trash tester
+	size = (size + 3) & ~3;		// align to 32-bit boundary
+
+	zone = levelzone;
+	base = rover = zone->rover;
+	start = base->prev;
+
+	do
+	{
+		if( rover == start )	// scaned all the way around the list
+			return NULL;
+		if( rover->tag )
+			base = rover = rover->next;
+		else
+			rover = rover->next;
+	} while( base->tag || base->size < size );
+
+	//
+	// found a block big enough
+	//
+	extra = base->size - size;
+	if( extra > MINFRAGMENT )
+	{
+		// there will be a free fragment after the allocated block
+		new = (memblock_t *) ((qbyte *)base + size );
+		new->size = extra;
+		new->tag = 0;			// free block
+		new->prev = base;
+		new->id = ZONEID;
+		new->next = base->next;
+		new->next->prev = new;
+		base->next = new;
+		base->size = size;
+	}
+
+	base->tag = tag;				// no longer a free block
+	zone->rover = base->next;	// next allocation will start looking here
+	zone->used += base->size;
+	zone->count++;
+	base->id = ZONEID;
+
+	// marker for memory trash testing
+	*(int *)((qbyte *)base + base->size - 4) = ZONEID;
+
+	return (void *) ((qbyte *)base + sizeof(memblock_t));
+}
+
+/*
+* G_Z_Malloc
+*/
+static void *G_Z_Malloc( int size, const char *filename, int fileline )
+{
+	void	*buf;
+	
+	buf = G_Z_TagMalloc( size, TAG_LEVEL, filename, fileline );
+	if( !buf )
+		GS_Error( "G_Z_Malloc: failed on allocation of %i bytes", size );
+	memset( buf, 0, size );
+
+	return buf;
+}
+
+/*
+* G_Z_Print
+*/
+static void G_Z_Print( memzone_t *zone )
+{
+	memblock_t	*block;
+
+	GS_Printf( "zone size: %i  used: %i in %i blocks\n", zone->size, zone->used, zone->count );
+
+	for( block = zone->blocklist.next; ; block = block->next )
+	{
+		//GS_Printf( "block:%p    size:%7i    tag:%3i\n", block, block->size, block->tag );
+
+		if( block->next == &zone->blocklist )
+			break;			// all blocks have been hit	
+		if( (qbyte *)block + block->size != (qbyte *)block->next )
+			GS_Printf( "ERROR: block size does not touch the next block\n" );
+		if( block->next->prev != block )
+			GS_Printf( "ERROR: next block doesn't have proper back link\n" );
+		if( !block->tag && !block->next->tag )
+			GS_Printf( "ERROR: two consecutive free blocks\n");
+	}
+}
+
+//==============================================================================
 
 /*
 * G_LevelInitPool
@@ -33,15 +246,8 @@ void G_LevelInitPool( size_t size )
 {
 	G_LevelFreePool();
 
-	if( !size )
-		size = levelpool_size;
-	assert( size );
-
-	levelpool = ( qbyte * )G_Malloc( size );
-	memset( levelpool, 0, size );
-
-	levelpool_size = size;
-	levelpool_pointer = 0;
+	levelzone = ( memzone_t * )G_Malloc( size );
+	G_Z_ClearZone( levelzone, size );
 }
 
 /*
@@ -49,38 +255,55 @@ void G_LevelInitPool( size_t size )
 */
 void G_LevelFreePool( void )
 {
-	if( levelpool )
+	if( levelzone )
 	{
-		G_Free( levelpool );
-		levelpool = NULL;
+		G_Free( levelzone );
+		levelzone = NULL;
 	}
 }
 
-//=============
-//G_LevelMemInit
-// Note that we never release allocated memory
-//=============
+/* 
+* G_LevelMalloc
+*/
 void *_G_LevelMalloc( size_t size, const char *filename, int fileline )
 {
-	qbyte *pointer;
-
-	if( levelpool_pointer + size > levelpool_size ) {
-		GS_Error( "G_LevelMalloc: out of memory (alloc %i bytes at %s:%i)\n", size, filename, fileline );
-		return NULL;
-	}
-
-	pointer = levelpool + levelpool_pointer;
-	levelpool_pointer += size;
-
-	return ( void * )pointer;
+	return G_Z_Malloc( size, filename, fileline );
 }
 
-//=============
-//G_LevelFree
-//=============
+/*
+* G_LevelFree
+*/
 void _G_LevelFree( void *data, const char *filename, int fileline )
 {
+	G_Z_Free( data, filename, fileline );
 }
+
+/*
+* G_LevelCopyString
+*/
+/*
+char *_G_LevelCopyString( const char *in, const char *filename, int fileline )
+{
+	char *out;
+
+	out = _G_LevelMalloc( strlen( in ) + 1, filename, fileline );
+	strcpy( out, in );
+	return out;
+}
+*/
+
+/*
+* G_LevelGarbageCollect
+*/
+/*
+void G_LevelGarbageCollect( void )
+{
+	if( g_asGC_stats->integer == 2 )
+		G_Z_Print( levelzone );
+}
+*/
+
+//==============================================================================
 
 //=============
 //G_Find
@@ -215,7 +438,7 @@ gentity_t *G_PickTarget( char *targetname )
 
 	while( 1 )
 	{
-		ent = G_Find( ent, FOFS( targetname ), targetname );
+		ent = G_Find( ent, FOFFSET( gentity_t, targetname ), targetname );
 		if( !ent )
 			break;
 		choice[num_choices++] = ent;
@@ -425,7 +648,7 @@ void G_TurnEntityIntoEvent( gentity_t *ent, int event, int parm )
 //
 //NULL sends to all the message to all clients
 //============
-void G_PrintMsg( gentity_t *ent, const char *format, ... )
+void G_PrintMsg( gclient_t *client, const char *format, ... )
 {
 	char msg[1024];
 	va_list	argptr;
@@ -440,30 +663,14 @@ void G_PrintMsg( gentity_t *ent, const char *format, ... )
 	while( ( p = strchr( p, '\"' ) ) != NULL )
 		*p = '\'';
 
+	// mirror at server console
+	if( dedicated->integer )
+		GS_Printf( "%s", msg );
+
 	s = va( "pr \"%s\"", msg );
 
-	if( !ent )
-	{
-		int i;
-
-		for( i = 0; i < gs.maxclients; i++ )
-		{
-			ent = game.entities + i;
-			if( !ent->s.local.inuse )
-				continue;
-			if( !ent->client )
-				continue;
-			trap_ServerCmd( ENTNUM( ent ), s );
-		}
-
-		// mirror at server console
-		if( dedicated->integer )
-			GS_Printf( "%s", msg );
-		return;
-	}
-
-	if( ent->s.local.inuse && ent->client )
-		trap_ServerCmd( ENTNUM( ent ), s );
+	if( client == NULL || trap_GetClientState( CLIENTNUM( client ) ) >= CS_SPAWNED )
+		trap_ServerCmd( CLIENTNUM( client ), s );
 }
 
 //============
@@ -471,7 +678,7 @@ void G_PrintMsg( gentity_t *ent, const char *format, ... )
 //
 //NULL sends to all the message to all clients
 //============
-void G_ChatMsg( gentity_t *ent, const char *format, ... )
+void G_ChatMsg( gclient_t *client, const char *format, ... )
 {
 	char msg[1024];
 	va_list	argptr;
@@ -486,29 +693,14 @@ void G_ChatMsg( gentity_t *ent, const char *format, ... )
 	while( ( p = strchr( p, '\"' ) ) != NULL )
 		*p = '\'';
 
+	// mirror at server console
+	if( dedicated->integer )
+		GS_Printf( "%s", msg );
+
 	s = va( "ch \"%s\"", msg );
 
-	if( !ent )
-	{
-		int i;
-		for( i = 0; i < gs.maxclients; i++ )
-		{
-			ent = game.entities + i;
-			if( !ent->s.local.inuse )
-				continue;
-			if( trap_GetClientState( ENTNUM( ent ) ) < CS_SPAWNED )
-				continue;
-			trap_ServerCmd( ENTNUM( ent ), s );
-		}
-
-		// mirror at server console
-		if( dedicated->integer )
-			GS_Printf( "%s", msg );
-		return;
-	}
-
-	if( ent->s.local.inuse && trap_GetClientState( ENTNUM( ent ) ) >= CS_SPAWNED )
-		trap_ServerCmd( ENTNUM( ent ), s );
+	if( client == NULL || trap_GetClientState( CLIENTNUM( client ) ) >= CS_SPAWNED )
+		trap_ServerCmd( CLIENTNUM( client ), s );
 }
 
 //============
@@ -516,7 +708,7 @@ void G_ChatMsg( gentity_t *ent, const char *format, ... )
 //
 //NULL sends to all the message to all clients
 //============
-void G_CenterPrintMsg( gentity_t *ent, const char *format, ... )
+void G_CenterPrintMsg( gclient_t *client, const char *format, ... )
 {
 	char msg[1024];
 	va_list	argptr;
@@ -531,7 +723,7 @@ void G_CenterPrintMsg( gentity_t *ent, const char *format, ... )
 	while( ( p = strchr( p, '\"' ) ) != NULL )
 		*p = '\'';
 
-	trap_ServerCmd( ENTNUM( ent ), va( "cp \"%s\"", msg ) );
+	trap_ServerCmd( CLIENTNUM( client ), va( "cp \"%s\"", msg ) );
 }
 
 //==============================================================================

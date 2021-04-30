@@ -77,6 +77,9 @@ static float GainForAttenuation( float dist, float attenuation )
 */
 static void G_AddEntNumToSnapList( int entNum, snapshotEntityNumbers_t *entsList )
 {
+	if( entNum < 0 || entNum >= ENTITY_WORLD )
+		GS_Error( "G_AddEntNumToSnapList: Invalid entNum %i\n", entNum );
+
 	// ignore if exceeds max count
 	if( entsList->numSnapshotEntities >= MAX_SNAPSHOT_ENTITIES )
 	{
@@ -88,6 +91,9 @@ static void G_AddEntNumToSnapList( int entNum, snapshotEntityNumbers_t *entsList
 	// don't double add entities
 	if( entityAddedToSnapList[entNum] )
 		return;
+
+	// mark as transmitted
+	game.entities[ entNum ].transmitted = qtrue;
 
 	entsList->snapshotEntities[entsList->numSnapshotEntities] = entNum;
 	entsList->numSnapshotEntities++;

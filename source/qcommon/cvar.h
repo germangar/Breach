@@ -62,7 +62,6 @@ void	    Cvar_SetValue( const char *var_name, float value );
 float	    Cvar_Value( const char *var_name );
 const char *Cvar_String( const char *var_name );
 int	    Cvar_Integer( const char *var_name );
-char *Cvar_Complete( const char *partial );
 void	    Cmd_WriteAliases( int file );
 int	    Cvar_CompleteCountPossible( const char *partial );
 char **Cvar_CompleteBuildList( const char *partial );

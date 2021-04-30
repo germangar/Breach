@@ -17,7 +17,7 @@ qboolean G_CheckCheat( gentity_t *ent )
 {
 	if( !sv_cheats->integer )
 	{
-		G_PrintMsg( ent, "Cheats are not allowed in this server\n" );
+		G_PrintMsg( ent->client, "Cheats are not allowed in this server\n" );
 		return qtrue;
 	}
 	return qfalse;
@@ -38,7 +38,7 @@ void Cmd_FakeClient_f( gentity_t *ent )
 	if( fakeclient )
 		G_Teams_Join_Cmd( fakeclient );
 	else
-		G_PrintMsg( ent, "Couldn't spawn a fakeclient\n" );
+		G_PrintMsg( ent->client, "Couldn't spawn a fakeclient\n" );
 }
 
 /*
@@ -105,13 +105,13 @@ void Cmd_NoClip_f( gentity_t *ent )
 	{
 		ent->s.solid = SOLID_NOT;
 		ent->s.ms.type = MOVE_TYPE_FREEFLY;
-		G_PrintMsg( ent, "Clipping OFF\n" );
+		G_PrintMsg( ent->client, "Clipping OFF\n" );
 	}
 	else
 	{
 		ent->s.solid = SOLID_PLAYER;
 		ent->s.ms.type = MOVE_TYPE_STEP;
-		G_PrintMsg( ent, "Clipping ON\n" );
+		G_PrintMsg( ent->client, "Clipping ON\n" );
 	}
 }
 
@@ -137,20 +137,20 @@ void Cmd_Class_f( gentity_t *ent )
 
 	if( ent->client->team == TEAM_NOTEAM || ent->client->team == TEAM_SPECTATOR )
 	{
-		G_PrintMsg( ent, "Join a team first\n" );
+		G_PrintMsg( ent->client, "Join a team first\n" );
 		return;
 	}
 
 	if( trap_Cmd_Argc() < 2 )
 	{
-		G_PrintMsg( ent, "You must specify a class name. Valid names are:\n" );
+		G_PrintMsg( ent->client, "You must specify a class name. Valid names are:\n" );
 		goto print_classes_help;
 	}
 
 	playerClass = GS_PlayerClassByName( trap_Cmd_Argv( 1 ) );
 	if( !playerClass )
 	{
-		G_PrintMsg( ent, "Invalid class name. Valid names are:\n" );
+		G_PrintMsg( ent->client, "Invalid class name. Valid names are:\n" );
 		goto print_classes_help;
 	}
 
@@ -161,14 +161,14 @@ void Cmd_Class_f( gentity_t *ent )
 	}
 
 	ent->client->playerClassIndex = playerClass->index;
-	G_PrintMsg( ent, "You will respawn as %s\n", playerClass->classname );
+	G_PrintMsg( ent->client, "You will respawn as %s\n", playerClass->classname );
 
 	return;
 
 print_classes_help:
 	for( i = 1; ( playerClass = GS_PlayerClassByIndex( i ) ) != NULL; i++ )
 	{
-		G_PrintMsg( ent, "- %s\n", playerClass->classname );
+		G_PrintMsg( ent->client, "- %s\n", playerClass->classname );
 	}
 }
 
@@ -242,7 +242,7 @@ static void Cmd_Origin_f( gentity_t *ent )
 {
 	if( G_CheckCheat( ent ) )
 		return;
-	G_PrintMsg( ent, "origin: %f, %f, %f\n", ent->s.ms.origin[0], ent->s.ms.origin[1], ent->s.ms.origin[2] );
+	G_PrintMsg( ent->client, "origin: %f, %f, %f\n", ent->s.ms.origin[0], ent->s.ms.origin[1], ent->s.ms.origin[2] );
 }
 
 //==================
@@ -252,7 +252,7 @@ static void Cmd_CvarInfo_f( gentity_t *ent )
 {
 	if( trap_Cmd_Argc() < 2 )
 	{
-		G_PrintMsg( ent, "Cmd_CvarInfo_f: invalid argument count\n" );
+		G_PrintMsg( ent->client, "Cmd_CvarInfo_f: invalid argument count\n" );
 		return;
 	}
 
@@ -309,7 +309,7 @@ void G_AddCommand( char *name, void (*callback)(gentity_t *) )
 /*
 * G_InitGameCommands
 */
-void G_InitGameCommands( void )
+void G_PrecacheGameCommands( void )
 {
 	int i;
 	for( i = 0; i < MAX_GAMECOMMANDS; i++ )
@@ -366,5 +366,5 @@ void G_ClientCommand( int clientNum )
 	}
 
 	// unknown as a command. Echo it as msg to the player
-	G_PrintMsg( ent, "unknown command: %s\n", trap_Cmd_Argv( 0 ) );
+	G_PrintMsg( ent->client, "unknown command: %s\n", trap_Cmd_Argv( 0 ) );
 }

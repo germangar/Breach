@@ -114,6 +114,8 @@ int	Q_rand( int *seed );
 float	Q_RSqrt( float number );
 int	Q_log2( int val );
 
+#define NEARESTEXPOF2(x)  ((int)floor( ( log( max( (x), 1 ) ) - log( 1.5 ) ) / log( 2 ) + 1 ))
+
 #define Square( x ) ( ( x )*( x ) )
 #define SQRTFAST( x ) ( ( x ) * Q_RSqrt( x ) ) // The expression a * rsqrt(b) is intended as a higher performance alternative to a / sqrt(b). The two expressions are comparably accurate, but do not compute exactly the same value in every case. For example, a * rsqrt(a*a + b*b) can be just slightly greater than 1, in rare cases.
 

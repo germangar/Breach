@@ -261,9 +261,6 @@ void CG_SetupView( cg_viewdef_t *view, int x, int y, int width, int height )
 {
 	memset( view, 0, sizeof( cg_viewdef_t ) );
 
-	cg.predictedPlayerState = *trap_GetPlayerStateFromSnapsBackup( cg.frame.snapNum );
-	cg.predictedEntityState = cg_entities[cg.predictedPlayerState.POVnum].current;
-
 	//
 	// VIEW SETTINGS
 	//
@@ -431,6 +428,34 @@ void CG_InitView( void )
 	cg_thirdPerson =	trap_Cvar_Get( "cg_thirdPerson", "0", CVAR_ARCHIVE );
 }
 
+/*
+* CG_RefresTimeFracs
+*/
+void CG_RefreshTimeFracs( void )
+{
+	if( cg.oldFrame.timeStamp == cg.frame.timeStamp )
+		cg.lerpfrac = 1.0f;
+	else
+		cg.lerpfrac = ( (double)( cg.time - cg.extrapolationTime ) - (double)cg.oldFrame.timeStamp ) / (double)( cg.snap.frameTime );
+
+	clamp( cg.lerpfrac, 0.0f, 1.0f );
+
+	if( cg.extrapolationTime )
+	{
+		cg.xerpTime = 0.001f * ( (double)cg.time - (double)cg.frame.timeStamp );
+		cg.oldXerpTime = 0.001f * ( (double)cg.time - (double)cg.oldFrame.timeStamp );
+		cg.xerpSmoothFrac = ( (double)cg.time - (double)( cg.frame.timeStamp - cg.extrapolationTime ) ) / (double)( cg.extrapolationTime );
+
+		clamp( cg.xerpSmoothFrac, 0.0f, 1.0f );
+	}
+	else
+	{
+		cg.xerpTime = 0.0f;
+		cg.oldXerpTime = 0.0f;
+		cg.xerpSmoothFrac = 0.0f;
+	}
+}
+
 //=================
 //CG_RenderView
 //=================
@@ -452,24 +477,7 @@ void CG_RenderView( float frameTime, int realTime, unsigned int serverTime, unsi
 		return;
 	}
 
-	if( cg.oldFrame.timeStamp == cg.frame.timeStamp )
-		cg.lerpfrac = 1.0f;
-	else
-		cg.lerpfrac = ( (double)( cg.time - cg.extrapolationTime ) - (double)cg.oldFrame.timeStamp ) / (double)( cg.frame.timeStamp - cg.oldFrame.timeStamp );
-
-	if( cg.extrapolationTime )
-	{
-		cg.xerpTime = 0.001f * ( (double)cg.time - (double)cg.frame.timeStamp );
-		cg.oldXerpTime = 0.001f * ( (double)cg.time - (double)cg.oldFrame.timeStamp );
-		cg.xerpSmoothFrac = ( (double)cg.time - (double)( cg.frame.timeStamp - cg.extrapolationTime ) ) / (double)( cg.extrapolationTime );
-
-		clamp( cg.xerpSmoothFrac, 0.0f, 1.0f );
-	}
-	else
-	{
-		cg.xerpTime = 0.0f;
-		cg.xerpSmoothFrac = 0.0f;
-	}
+	CG_RefreshTimeFracs();
 
 	CG_FixVolumeCvars();
 
@@ -479,6 +487,9 @@ void CG_RenderView( float frameTime, int realTime, unsigned int serverTime, unsi
 	trap_R_ClearScene();
 
 	CG_CalcViewRectangle( vpos );
+
+	cg.predictedPlayerState = *trap_GetPlayerStateFromSnapsBackup( cg.frame.snapNum );
+	cg.predictedEntityState = cg_entities[cg.predictedPlayerState.POVnum].current;
 
 	CG_SetupView( &cg.view, vpos[0], vpos[1], vpos[2], vpos[3] );
 

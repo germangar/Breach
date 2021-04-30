@@ -29,6 +29,7 @@ cvar_t *vid_ypos;          // Y coordinate of window position
 cvar_t *vid_fullscreen;
 cvar_t *vid_displayfrequency;
 cvar_t *vid_multiscreen_head;
+cvar_t *vid_parentwid;		// parent window identifier
 cvar_t *win_noalttab;
 cvar_t *win_nowinkeys;
 
@@ -49,13 +50,11 @@ void VID_EnableAltTab( qboolean enable );
 void VID_EnableWinKeys( qboolean enable );
 
 /*
-============
-VID_Restart_f
-
-Console command to re-start the video mode and refresh DLL. We do this
-simply by setting the vid_ref_modified variable, which will
-cause the entire video mode and refresh DLL to be reset on the next frame.
-============
+** VID_Restart_f
+*
+* Console command to re-start the video mode and refresh DLL. We do this
+* simply by setting the vid_ref_modified variable, which will
+* cause the entire video mode and refresh DLL to be reset on the next frame.
 */
 
 void VID_Restart( qboolean verbose )
@@ -91,12 +90,15 @@ vidmode_t vid_modes[] =
 	{ 1600, 1200, qfalse },
 	{ 2048, 1536, qfalse },
 
+	{ 800, 480, qtrue },
 	{ 856, 480, qtrue },
 	{ 1024,	576, qtrue },
 	{ 1200, 800, qtrue },
 	{ 1280, 800, qtrue },
+	{ 1366, 768, qtrue },
 	{ 1440,	900, qtrue },
 	{ 1680,	1050, qtrue },
+	{ 1920, 1080, qtrue },
 	{ 1920,	1200, qtrue },
 	{ 2560,	1600, qtrue },
 
@@ -108,6 +110,9 @@ vidmode_t vid_modes[] =
 	{ 6144, 1536, qfalse }
 };
 
+/*
+** VID_GetModeInfo
+*/
 qboolean VID_GetModeInfo( int *width, int *height, qboolean *wideScreen, int mode )
 {
 	if( mode < -1 || mode >= VID_NUM_MODES )
@@ -130,9 +135,35 @@ qboolean VID_GetModeInfo( int *width, int *height, qboolean *wideScreen, int mod
 }
 
 /*
-============
-VID_ModeList_f
-============
+** VID_GetModeNum
+*
+* Find the best matching video mode for given width and height
+*/
+int VID_GetModeNum( int width, int height )
+{
+	int i;
+	int dx, dy, dist;
+	int best = -1, best_dist = 10000000;
+
+	for( i = 0; i < VID_NUM_MODES; i++ )
+	{
+		dx = vid_modes[i].width - width;
+		dy = vid_modes[i].height - height;
+
+		dist = dx * dx + dy * dy;
+
+		if( best < 0 || dist < best_dist )
+		{
+			best = i;
+			best_dist = dist;
+		}
+	}
+
+	return best;
+}
+
+/*
+** VID_ModeList_f
 */
 static void VID_ModeList_f( void )
 {
@@ -153,13 +184,11 @@ void VID_NewWindow( int width, int height )
 }
 
 /*
-============
-VID_CheckChanges
-
-This function gets called once just before drawing each frame, and its sole purpose in life
-is to check to see if any of the video mode parameters have changed, and if they have to
-update the rendering DLL and/or video mode to match.
-============
+** VID_CheckChanges
+*
+* This function gets called once just before drawing each frame, and its sole purpose in life
+* is to check to see if any of the video mode parameters have changed, and if they have to
+* update the rendering DLL and/or video mode to match.
 */
 void VID_CheckChanges( void )
 {
@@ -229,9 +258,7 @@ void VID_CheckChanges( void )
 }
 
 /*
-============
-VID_Init
-============
+** VID_Init
 */
 void VID_Init( void )
 {
@@ -240,9 +267,10 @@ void VID_Init( void )
 	vid_customheight = Cvar_Get( "vid_customheight", "768", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	vid_xpos = Cvar_Get( "vid_xpos", "3", CVAR_ARCHIVE );
 	vid_ypos = Cvar_Get( "vid_ypos", "22", CVAR_ARCHIVE );
-	vid_fullscreen = Cvar_Get( "vid_fullscreen", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+	vid_fullscreen = Cvar_Get( "vid_fullscreen", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	vid_displayfrequency = Cvar_Get( "vid_displayfrequency", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	vid_multiscreen_head = Cvar_Get( "vid_multiscreen_head", "-1", CVAR_ARCHIVE );
+	vid_parentwid = Cvar_Get( "vid_parentwid", "0", CVAR_NOSET );
 
 	win_noalttab = Cvar_Get( "win_noalttab", "0", CVAR_ARCHIVE );
 	win_nowinkeys = Cvar_Get( "win_nowinkeys", "0", CVAR_ARCHIVE );
@@ -261,9 +289,7 @@ void VID_Init( void )
 }
 
 /*
-============
-VID_Shutdown
-============
+** VID_Shutdown
 */
 void VID_Shutdown( void )
 {
