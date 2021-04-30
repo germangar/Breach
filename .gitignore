@@ -24,9 +24,15 @@
 *.lai
 *.la
 *.a
-*.lib
+# *.lib
 
 # Executables
-*.exe
+# *.exe
 *.out
 *.app
+
+# Otro
+*.suo
+*.filters
+*.user
+*.sdf
