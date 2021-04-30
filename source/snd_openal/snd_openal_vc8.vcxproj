@@ -203,7 +203,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;ogg_static.lib;vorbis_static.lib;vorbisfile_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\$(Configuration)$(Platform)\libs\snd_openal_x86.dll</OutputFile>
+      <OutputFile>$(Configuration)$(Platform)\snd_openal_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x86\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
@@ -307,7 +307,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;ogg_static.lib;vorbis_static.lib;vorbisfile_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\$(Configuration)$(Platform)\libs\snd_openal_x86.dll</OutputFile>
+      <OutputFile>$(Configuration)$(Platform)\snd_openal_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x86\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>

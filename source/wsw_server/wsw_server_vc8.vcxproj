@@ -170,7 +170,7 @@
     </ProjectReference>
     <Link>
       <AdditionalDependencies>winmm.lib;wsock32.lib;zlibstat.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\$(Configuration)$(Platform)\wsw_server_x86.exe</OutputFile>
+      <OutputFile>$(Configuration)$(Platform)\wsw_server_x86.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x86\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
@@ -281,7 +281,7 @@
     </ProjectReference>
     <Link>
       <AdditionalDependencies>winmm.lib;wsock32.lib;zlibstat.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\$(Configuration)$(Platform)\wsw_server_x86.exe</OutputFile>
+      <OutputFile>$(Configuration)$(Platform)\wsw_server_x86.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x86\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>

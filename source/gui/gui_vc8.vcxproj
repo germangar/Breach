@@ -166,7 +166,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\$(Configuration)$(Platform)\base\gui_x86.dll</OutputFile>
+      <OutputFile>$(Configuration)$(Platform)\gui_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>libcmt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -266,7 +266,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\$(Configuration)$(Platform)\base\gui_x86.dll</OutputFile>
+      <OutputFile>$(Configuration)$(Platform)\gui_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
       <ModuleDefinitionFile>.\gui.def</ModuleDefinitionFile>

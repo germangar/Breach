@@ -167,7 +167,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\$(Configuration)$(Platform)\base\cgame_x86.dll</OutputFile>
+      <OutputFile>$(Configuration)$(Platform)\cgame_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>libcmt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -269,7 +269,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\$(Configuration)$(Platform)\base\cgame_x86.dll</OutputFile>
+      <OutputFile>$(Configuration)$(Platform)\cgame_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
       <ModuleDefinitionFile>.\cgame.def</ModuleDefinitionFile>
