@@ -1,0 +1,21 @@
+Index: radiant/xywindow.cpp
+===================================================================
+--- radiant/xywindow.cpp	(revision 402)
++++ radiant/xywindow.cpp	(working copy)
+@@ -2646,6 +2646,7 @@
+ 
+ void XY_Next()
+ {
++/*
+   if (g_pParentWnd->CurrentStyle() == MainFrame::eSplit || g_pParentWnd->CurrentStyle() == MainFrame::eFloating)
+   {
+ 	  // cannot do this in a split window
+@@ -2653,7 +2654,7 @@
+ 	  XY_Split_Focus();
+ 	  return;
+   }
+-
++*/
+   XYWnd* xywnd = g_pParentWnd->GetXYWnd();
+   if (xywnd->GetViewType() == XY)
+     xywnd->SetViewType(XZ);

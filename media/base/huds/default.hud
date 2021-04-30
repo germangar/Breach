@@ -1,0 +1,28 @@
+
+setFont con_fontSystemsmall
+
+setAlign #LEFT #BOTTOM
+setCursor 0, #HEIGHT
+drawString "fps:"
+moveCursor 36, 0
+drawFPS
+
+moveCursor 48, 0
+drawString "health:"
+moveCursor 54, 0
+drawStringNum %STAT_HEALTH
+
+if %STAT_NEXT_RESPAWN
+	moveCursor 48, 0
+	drawString "resp:"
+	moveCursor 36, 0
+	drawStringNum %STAT_NEXT_RESPAWN
+endif
+
+setAlign #CENTER #TOP
+setCursor #WIDTH * 0.5, 0
+drawClock
+
+include inc/default/weapon
+
+

@@ -1,0 +1,4 @@
+{ 
+surfaceparmSnow 0x80000
+surfaceparmGrass 0x100000
+} 

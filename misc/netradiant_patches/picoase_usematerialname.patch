@@ -1,0 +1,21 @@
+Index: libs/picomodel/pm_ase.c
+===================================================================
+--- libs/picomodel/pm_ase.c	(revision 402)
++++ libs/picomodel/pm_ase.c	(working copy)
+@@ -1110,6 +1110,7 @@
+ 				PicoSetShaderMapName( shader, mapname );
+ 
+         /* extract shadername from bitmap path */
++#if 0
+         if(mapname != NULL)
+         {
+           char* p = mapname;
+@@ -1140,7 +1141,7 @@
+ 				    PicoSetShaderName( shader,p );
+           }
+         }
+-
++#endif
+         /* this is just a material with 1 submaterial */
+ 				subMaterial = _ase_add_submaterial( &materials, index, 0, shader );
+ 			}

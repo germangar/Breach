@@ -1,0 +1,11 @@
+
+if %WEAPON_ITEM
+	set3DObjectEffect #EFF3D_WAVEROLL
+	setSize 222 132
+	setAlign #RIGHT #BOTTOM
+	setCursor #WIDTH, #HEIGHT
+	setAngles 17, 160, 0
+	drawItem %WEAPON_ITEM
+	set3DObjectEffect #EFF3D_NONE
+endif
+
