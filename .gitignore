@@ -53,3 +53,4 @@ source/warsow/DebugWin32
 source/warsow/ReleaseWin32
 source/wsw_server/DebugWin32
 source/wsw_server/ReleaseWin32
+source/ipch
