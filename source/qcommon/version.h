@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #ifndef APPLICATION
-# define APPLICATION		"NewProj"
+# define APPLICATION		"breach"
 #endif
 
 #ifndef APP_VERSION_MAJOR
@@ -45,14 +45,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif
 
 #ifndef APP_URL
-#define	APP_URL							"http://www.warsow.net/"
+#define	APP_URL							""
 #endif
 
 #ifndef APP_UPDATE_URL
-#define	APP_UPDATE_URL					"http://update.warsow.net/"
+#define	APP_UPDATE_URL					""
 #define	APP_SERVER_UPDATE_DIRECTORY		"autoupdate/"APP_VERSION_STR"/"
 #define APP_SERVER_UPDATE_FILE			"filelist.txt"
-#define APP_CLIENT_UPDATE_FILE			"warsow_last_version.txt"
+#define APP_CLIENT_UPDATE_FILE			APPLICATION"_last_version.txt"
 #endif
 
 #ifndef APP_COPYRIGHT_OWNER

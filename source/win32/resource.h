@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Developer Studio generated include file.
-// Used by warsow.rc
+// Used by *.rc
 //
 #define IDI_APPICON_VALUE				105
 

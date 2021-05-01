@@ -226,7 +226,7 @@ extern void G_AnnouncerSound( gentity_t *target, int soundindex, int team, qbool
 extern void G_GlobalSound( int channel, int soundindex );
 float vectoyaw( vec3_t vec );
 
-//more warsow utils
+//more utils
 char *G_ListNameForPosition( const char *namesList, int position, const char separator );
 char *G_AllocCreateNamesList( const char *path, const char *extension, const char separator );
 extern game_locals_t game;
