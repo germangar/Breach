@@ -124,6 +124,8 @@
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectName)_$(PlatformShortName)</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectName)_$(PlatformShortName)</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectName)_x64</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectName)_x64</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <CustomBuildStep>
@@ -220,7 +222,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;ogg_static.lib;vorbis_static.lib;vorbisfile_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\Debug\x64\libs\snd_qf_x64.dll</OutputFile>
+      <OutputFile>Debug\x64\snd_qf_x64.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\Debug\x64\$(TargetFileName).intermediate.manifest</ManifestFile>
@@ -319,7 +321,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;ogg_static.lib;vorbis_static.lib;vorbisfile_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\Release\x64\libs\snd_qf_x64.dll</OutputFile>
+      <OutputFile>Release\x64\snd_qf_x64.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\Release\x64\$(TargetFileName).intermediate.manifest</ManifestFile>

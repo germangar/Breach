@@ -124,6 +124,8 @@
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectName)_$(PlatformShortName)</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectName)_$(PlatformShortName)</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectName)_x64</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectName)_x64</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <CustomBuildStep>
@@ -222,7 +224,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;wsock32.lib;zlibstat.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\Debug\x64\wsw_server_x64.exe</OutputFile>
+      <OutputFile>Debug\x64\wsw_server_x64.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\Debug\x64\$(TargetFileName).intermediate.manifest</ManifestFile>
@@ -332,7 +334,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>winmm.lib;wsock32.lib;zlibstat.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>..\Release\x64\wsw_server_x64.exe</OutputFile>
+      <OutputFile>Release\x64\wsw_server_x64.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\Release\x64\$(TargetFileName).intermediate.manifest</ManifestFile>
@@ -443,8 +445,6 @@
     <ClCompile Include="..\qcommon\ascript.c" />
     <ClCompile Include="..\null\cl_null.c" />
     <ClCompile Include="..\qcommon\cm_main.c" />
-    <ClCompile Include="..\qcommon\cm_q1bsp.c" />
-    <ClCompile Include="..\qcommon\cm_q2bsp.c" />
     <ClCompile Include="..\qcommon\cm_q3bsp.c" />
     <ClCompile Include="..\qcommon\cm_trace.c" />
     <ClCompile Include="..\qcommon\cmd.c" />
