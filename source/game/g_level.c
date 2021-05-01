@@ -149,6 +149,4 @@ void G_InitLevel( const char *mapname, const char *entities, int entstrlen, unsi
 			continue;
 		}
 	}
-
-//	G_asGarbageCollect( qtrue );
 }
