@@ -713,12 +713,7 @@ loc0:
 
 		leaf = &cms->map_leafs[-1 - num];
 		if( leaf->contents & trace_contents )
-		{
-			if( !leaf->nummarkfaces || !BoundsIntersect( trace_absmins, trace_absmaxs, leaf->markfaces_mins, leaf->markfaces_maxs ) )
-				CM_ClipBox( cms, leaf->markbrushes, leaf->nummarkbrushes, NULL, 0 );
-			else
-				CM_ClipBox( cms, leaf->markbrushes, leaf->nummarkbrushes, leaf->markfaces, leaf->nummarkfaces );
-		}
+			CM_ClipBox( cms, leaf->markbrushes, leaf->nummarkbrushes, leaf->markfaces, leaf->nummarkfaces );
 		return;
 	}
 
@@ -884,10 +879,7 @@ static void CM_BoxTrace( cmodel_state_t *cms, trace_t *tr, vec3_t start, vec3_t 
 
 				if( leaf->contents & trace_contents )
 				{
-					if( !leaf->nummarkfaces || !BoundsIntersect( trace_absmins, trace_absmaxs, leaf->markfaces_mins, leaf->markfaces_maxs ) )
-						CM_TestBox( cms, leaf->markbrushes, leaf->nummarkbrushes, NULL, 0 );
-					else
-						CM_TestBox( cms, leaf->markbrushes, leaf->nummarkbrushes, leaf->markfaces, leaf->nummarkfaces );
+					CM_TestBox( cms, leaf->markbrushes, leaf->nummarkbrushes, leaf->markfaces, leaf->nummarkfaces );
 					if( tr->allsolid )
 						break;
 				}
