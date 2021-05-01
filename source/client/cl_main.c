@@ -608,10 +608,6 @@ void CL_Disconnect( const char *message )
 	else
 		wasconnecting = qfalse;
 
-	// if running a local server, kill it and reissue
-	if( Com_ServerState() )
-		SV_Shutdown( "Owner left the listen server\n", qfalse );
-
 	if( cl_timedemo && cl_timedemo->integer )
 	{
 		unsigned int time;

@@ -523,4 +523,3 @@ extern float scr_conlines;       // lines of console to display
 //
 void VID_NewWindow( int width, int height );
 qboolean VID_GetModeInfo( int *width, int *height, qboolean *wideScreen, int mode );
-int	VID_GetModeNum( int width, int height );
