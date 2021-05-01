@@ -252,8 +252,6 @@ void CG_ExecuteHUDScript( void );
 
 extern cvar_t *cg_fov;
 extern cvar_t *cg_zoomSens;
-extern cvar_t *cg_playList;
-extern cvar_t *cg_playListShuffle;
 
 #define CG_Malloc( size ) trap_MemAlloc( size, __FILE__, __LINE__ )
 #define CG_Free( mem ) trap_MemFree( mem, __FILE__, __LINE__ )

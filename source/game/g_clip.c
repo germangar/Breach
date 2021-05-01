@@ -56,21 +56,15 @@ void GClip_BackUpCollisionFrame( void )
 */
 entity_state_t *GClip_GetClipStateForDeltaTime( int entNum, int deltaTime )
 {
-	static int index = 0;
-	static entity_state_t clipStates[8]; // use for simultaneous grabs
-	static entity_state_t *clipState;
-	const entity_state_t *clipStateNewer; // for interpolation
+
+	static entity_state_t clipState;
+	static entity_state_t clipStateNewer; // for interpolation
 	c4frame_t *cframe = NULL;
 	unsigned int backTime, cframenum, backframes, i;
 	gentity_t *ent = game.entities + entNum;
 
-	// pick one of the 8 slots to prevent overwritings
-	clipState = &clipStates[index];
-	index = ( index + 1 )&7;
-
 	if( entNum == ENTITY_WORLD || deltaTime >= 0 || !g_antilag->integer )
-	{
-		// current time entity
+	{                                                                   // current time entity
 		return &ent->s;
 	}
 
@@ -117,8 +111,8 @@ entity_state_t *GClip_GetClipStateForDeltaTime( int entNum, int deltaTime )
 		return &ent->s;
 	}
 
-	// copy older for the data that is not interpolated
-	*clipState = cframe->clipStates[entNum];
+	// setup with older for the data that is not interpolated
+	clipState = cframe->clipStates[entNum];
 
 	// if we found an older than desired backtime frame, interpolate to find a more precise position.
 	if( game.serverTime > cframe->timestamp + backTime )
@@ -128,30 +122,31 @@ entity_state_t *GClip_GetClipStateForDeltaTime( int entNum, int deltaTime )
 		if( backframes == 1 )
 		{               // interpolate from 1st backed up to current
 			lerpFrac = (float)( ( game.serverTime - backTime ) - cframe->timestamp ) / (float)( game.serverTime - cframe->timestamp );
-			clipStateNewer = &ent->s;
+			clipStateNewer = ent->s;
 		}
 		else
 		{ // interpolate between 2 backed up
 			c4frame_t *cframeNewer = &sv_collisionframes[( cframenum-( backframes-1 ) ) & CFRAME_UPDATE_MASK];
 			lerpFrac = (float)( ( game.serverTime - backTime ) - cframe->timestamp ) / (float)( cframeNewer->timestamp - cframe->timestamp );
-			clipStateNewer = &cframeNewer->clipStates[entNum];
+			clipStateNewer = cframeNewer->clipStates[entNum];
 		}
 
 		//GS_Printf( "backTime:%i cframeBackTime:%i backFrames:%i lerfrac:%f\n", backTime, game.serverTime - cframe->timestamp, backframes, lerpFrac );
 
 		// interpolate
-		VectorLerp( clipState->ms.origin, lerpFrac, clipStateNewer->ms.origin, clipState->ms.origin );
-		VectorLerp( clipState->local.mins, lerpFrac, clipStateNewer->local.mins, clipState->local.mins );
-		VectorLerp( clipState->local.maxs, lerpFrac, clipStateNewer->local.maxs, clipState->local.maxs );
+		VectorLerp( clipState.ms.origin, lerpFrac, clipStateNewer.ms.origin, clipState.ms.origin );
+		VectorLerp( clipState.local.mins, lerpFrac, clipStateNewer.local.mins, clipState.local.mins );
+		VectorLerp( clipState.local.maxs, lerpFrac, clipStateNewer.local.maxs, clipState.local.maxs );
 		for( i = 0; i < 3; i++ )
-			clipState->ms.angles[i] = LerpAngle( clipState->ms.angles[i], clipStateNewer->ms.angles[i], lerpFrac );
+			clipState.ms.angles[i] = LerpAngle( clipState.ms.angles[i], clipStateNewer.ms.angles[i], lerpFrac );
 	}
 
 	//GS_Printf( "backTime:%i cframeBackTime:%i backFrames:%i\n", backTime, game.serverTime - cframe->timestamp, backframes );
 
 	// back time entity
-	return clipState;
+	return &clipState;
 }
+
 
 /*
 * GClip_PointCluster

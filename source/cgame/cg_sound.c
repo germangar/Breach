@@ -135,10 +135,7 @@ void CG_StartBackgroundTrack( void )
 	Q_strncpyz( intro, COM_Parse( &string ), sizeof( intro ) );
 	Q_strncpyz( loop, COM_Parse( &string ), sizeof( loop ) );
 
-	if( intro[0] )
-		trap_S_StartBackgroundTrack( intro, loop );
-	else if( cg_playList->string[0] )
-		trap_S_StartBackgroundTrack( cg_playList->string, cg_playListShuffle->integer ? "1" : "0" );
+	trap_S_StartBackgroundTrack( intro, loop );
 }
 
 //==================================================

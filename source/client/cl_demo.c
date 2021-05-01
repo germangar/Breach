@@ -506,6 +506,8 @@ static void CL_ReadDemoMessage( void )
 	if( read != msglen )
 		Com_Error( ERR_DROP, "Error reading demo file: End of file" );
 
+	demofilelen -= msglen;
+
 	demomsg.maxsize = sizeof( msgbuf );
 	demomsg.data = msgbuf;
 	demomsg.cursize = msglen;
