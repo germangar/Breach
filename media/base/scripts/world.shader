@@ -46,6 +46,51 @@ textures/world/lava
 	}
 }
 
+textures/world/bluewater
+{
+	qer_editorimage textures/water/water_gloss.jpg
+	q3map_globaltexture
+	qer_trans .75
+	surfaceparm trans
+	surfaceparm nonsolid
+	surfaceparm water
+	surfaceparm nodlight
+	q3map_lightmapsamplesize 64
+
+	if GLSL && portalMaps
+
+	portal
+
+	{
+		distortion textures/water/water5_DUDV textures/water/water5_norm
+		alphagen const 0.45
+		rgbgen const 0.13 0.17 0.16
+		tcmod scale 0.25 0.25
+		tcmod scroll -0.05 -0.05
+	}
+
+	endif
+
+	if ! GLSL || ! portalMaps
+
+	{
+		map textures/water/water_gloss.jpg
+		blendFunc GL_dst_color GL_one
+		rgbgen identity
+		tcmod scale .25 .25
+		tcmod scroll .02 .01
+	}
+
+	{
+		map $whiteImage
+		rgbgen const .0 .3 .4
+		alphagen const 0.25
+		blendfunc blend
+	}
+
+	endif
+}
+
 textures/world/blueportalwater
 {
 	qer_editorimage textures/wazzz/wat_gloss.jpg

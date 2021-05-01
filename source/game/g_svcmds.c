@@ -249,22 +249,6 @@ static void Cmd_WriteIP_f( void )
 	trap_FS_FCloseFile( file );
 }
 
-
-static void Cmd_Restart_f( void )
-{
-	int i;
-	for( i = 0; i < gs.maxclients; i++ )
-	{
-		if( trap_GetClientState( i ) < CS_SPAWNED )
-			continue;
-
-		game.clients[i].team = TEAM_SPECTATOR;
-		G_Client_Respawn( &game.entities[i], qtrue );
-	}
-
-	G_InitLevel( level.mapname, level.mapString, level.mapStrlen, game.serverTime );
-}
-
 //=================
 //G_AddCommands
 //=================
@@ -274,8 +258,6 @@ void G_AddCommands( void )
 	trap_Cmd_AddCommand( "removeip", Cmd_RemoveIP_f );
 	trap_Cmd_AddCommand( "listip", Cmd_ListIP_f );
 	trap_Cmd_AddCommand( "writeip", Cmd_WriteIP_f );
-
-	trap_Cmd_AddCommand( "restart", Cmd_Restart_f );
 }
 
 //=================
