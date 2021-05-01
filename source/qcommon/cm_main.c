@@ -29,8 +29,10 @@ static mempool_t *cmap_mempool;
 static cvar_t *cm_noAreas;
 cvar_t *cm_noCurves;
 
+#ifdef CM_LEGACYBSP
 void CM_LoadQ1BrushModel( cmodel_state_t *cms, void *parent, void *buf, bspFormatDesc_t *format );
 void CM_LoadQ2BrushModel( cmodel_state_t *cms, void *parent, void *buf, bspFormatDesc_t *format );
+#endif // CM_LEGACYBSP
 void CM_LoadQ3BrushModel( cmodel_state_t *cms, void *parent, void *buffer, bspFormatDesc_t *format );
 
 static const modelFormatDescr_t cm_supportedformats[] =
@@ -38,11 +40,13 @@ static const modelFormatDescr_t cm_supportedformats[] =
 	// Q3-alike .bsp models
 	{ "*", 4, q3BSPFormats, 0, ( const modelLoader_t )CM_LoadQ3BrushModel },
 
+#ifdef CM_LEGACYBSP
 	// Q2-alike .bsp models
 	{ "*", 4, q2BSPFormats, 0, ( const modelLoader_t )CM_LoadQ2BrushModel },
 
 	// Q1-alike .bsp models
 	{ "*", 0, q1BSPFormats, 0, ( const modelLoader_t )CM_LoadQ1BrushModel },
+#endif //CM_LEGACYBSP
 
 	// trailing NULL
 	{ NULL,	0, NULL, 0, NULL }

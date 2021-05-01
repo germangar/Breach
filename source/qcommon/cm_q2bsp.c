@@ -17,12 +17,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+#ifdef CM_LEGACYBSP
 // cm_q2bsp.c -- Q2 BSP model loading
 
 #include "qcommon.h"
 #include "cm_local.h"
 
 //=========================================================
+
 
 /*
 =================
@@ -88,13 +90,13 @@ static int CMod_SurfaceContents( int oldcontents )
 	return contents;
 }
 
-/*
+
 ===============================================================================
 
 MAP LOADING
 
 ===============================================================================
-*/
+
 
 /*
 * CMod_SubmodelBrushes_r
@@ -509,3 +511,5 @@ void CM_LoadQ2BrushModel( cmodel_state_t *cms, void *parent, void *buf, bspForma
 
 	FS_FreeFile( buf );
 }
+
+#endif //CM_LEGACYBSP
