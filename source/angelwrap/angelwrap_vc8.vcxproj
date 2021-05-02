@@ -107,14 +107,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)$(Platform)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)$(Platform)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\$(Platform)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\$(Platform)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\$(Platform)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\$(Platform)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)$(Platform)\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)$(Platform)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\$(Platform)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\$(Platform)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Configuration)\$(Platform)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Configuration)\$(Platform)\</IntDir>
@@ -181,10 +181,10 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <PrecompiledHeaderOutputFile>.\$(Configuration)$(Platform)\angelwrap.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\$(Configuration)$(Platform)\</AssemblerListingLocation>
-      <ObjectFileName>.\$(Configuration)$(Platform)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\$(Configuration)$(Platform)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\$(Configuration)\$(Platform)\angelwrap.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\$(Configuration)\$(Platform)\</AssemblerListingLocation>
+      <ObjectFileName>.\$(Configuration)\$(Platform)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\$(Configuration)\$(Platform)\</ProgramDataBaseFileName>
       <BrowseInformation>true</BrowseInformation>
       <WarningLevel>Level4</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -197,17 +197,17 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>angelscriptd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(Configuration)$(Platform)\angelwrap_x86.dll</OutputFile>
+      <OutputFile>$(Configuration)\$(Platform)\angelwrap_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x86\lib\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
+      <ManifestFile>.\$(Configuration)\$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>libcmtd;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\angelwrap.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>.\$(Configuration)$(Platform)\angelwrap_x86.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\$(Configuration)\$(Platform)\angelwrap_x86.pdb</ProgramDatabaseFile>
       <GenerateMapFile>true</GenerateMapFile>
-      <MapFileName>.\$(Configuration)$(Platform)\angelwrap_x86.map</MapFileName>
-      <ImportLibrary>.\$(Configuration)$(Platform)\angelwrap_x86.lib</ImportLibrary>
+      <MapFileName>.\$(Configuration)\$(Platform)\angelwrap_x86.map</MapFileName>
+      <ImportLibrary>.\$(Configuration)\$(Platform)\angelwrap_x86.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -289,10 +289,10 @@
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <PrecompiledHeader>
       </PrecompiledHeader>
-      <PrecompiledHeaderOutputFile>.\$(Configuration)$(Platform)\angelwrap.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\$(Configuration)$(Platform)\</AssemblerListingLocation>
-      <ObjectFileName>.\$(Configuration)$(Platform)\</ObjectFileName>
-      <ProgramDataBaseFileName>.\$(Configuration)$(Platform)\</ProgramDataBaseFileName>
+      <PrecompiledHeaderOutputFile>.\$(Configuration)\$(Platform)\angelwrap.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\$(Configuration)\$(Platform)\</AssemblerListingLocation>
+      <ObjectFileName>.\$(Configuration)\$(Platform)\</ObjectFileName>
+      <ProgramDataBaseFileName>.\$(Configuration)\$(Platform)\</ProgramDataBaseFileName>
       <WarningLevel>Level4</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -303,15 +303,15 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>angelscript.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(Configuration)$(Platform)\angelwrap_x86.dll</OutputFile>
+      <OutputFile>$(Configuration)\$(Platform)\angelwrap_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x86\lib\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
+      <ManifestFile>.\$(Configuration)\$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>libcmt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\angelwrap.def</ModuleDefinitionFile>
-      <ProgramDatabaseFile>.\$(Configuration)$(Platform)\angelwrap_x86.pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\$(Configuration)\$(Platform)\angelwrap_x86.pdb</ProgramDatabaseFile>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-      <ImportLibrary>.\$(Configuration)$(Platform)\angelwrap_x86.lib</ImportLibrary>
+      <ImportLibrary>.\$(Configuration)\$(Platform)\angelwrap_x86.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
@@ -351,7 +351,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>angelscript.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(Configuration)$(Platform)\angelwrap_x64.dll</OutputFile>
+      <OutputFile>$(Configuration)\$(Platform)\angelwrap_x64.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x64\lib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\Release\x64\$(TargetFileName).intermediate.manifest</ManifestFile>
