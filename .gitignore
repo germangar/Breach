@@ -74,3 +74,5 @@ source/wsw_server/Release
 
 source/ipch
 media/AS_DEBUG
+media/base/console.log
+

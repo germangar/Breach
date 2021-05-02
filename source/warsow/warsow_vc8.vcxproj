@@ -162,8 +162,8 @@
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectName)_$(PlatformShortName)</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectName)_x64</TargetName>
     <ExecutablePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Program Files EXT\Utilities\Bin\x64;$(ExecutablePath)</ExecutablePath>
-    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Program Files EXT\Include;D:\Program Files EXT\Win10SDK\Include;$(IncludePath)</IncludePath>
-    <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Program Files EXT\Lib\x86;D:\Program Files EXT\Win10SDK\Lib;D:\Program Files EXT\Include;D:\Program Files EXT\Lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Program Files EXT\Lib\x64;D:\Program Files EXT\Win10SDK\Include;$(IncludePath)</IncludePath>
+    <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Program Files EXT\Lib\x64;D:\Program Files EXT\Win10SDK\Lib;D:\Program Files EXT\Include;$(LibraryPath)</LibraryPath>
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Program Files EXT\Lib\x64;$(LibraryPath)</LibraryPath>
     <ExecutablePath Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Program Files EXT\Utilities\Bin\x64;$(ExecutablePath)</ExecutablePath>
     <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">D:\Program Files EXT\Include;D:\Program Files EXT\Win10SDK\Include;$(IncludePath)</IncludePath>
@@ -283,6 +283,9 @@
       <AdditionalOptions>
       </AdditionalOptions>
     </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <PreBuildEvent>
@@ -388,6 +391,9 @@
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Debug|Win32'">
     <Midl>

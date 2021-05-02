@@ -313,26 +313,8 @@ class cMover
 		this.endFuncCase = 0;
 	}
 }
-*/
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//===================================================
 
 void target_print_activate( cEntity @ent, cEntity @other, cEntity @activator )
 {
@@ -376,6 +358,27 @@ void misc_rotated_box( cEntity @ent )
 	ent.nextThink = levelTime + 1000;
 	ent.linkEntity();
 }
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//===================================================
 
 
 
