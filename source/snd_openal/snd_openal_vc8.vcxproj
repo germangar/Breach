@@ -222,6 +222,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <CustomBuildStep>
       <Message>Performing Custom Build Step</Message>
+      <Command>copy "$(TargetPath)" ".\..\..\media\libs"</Command>
+      <Outputs>.\..\..\media\libs\$(TargetName);%(Outputs)</Outputs>
     </CustomBuildStep>
     <Midl>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>

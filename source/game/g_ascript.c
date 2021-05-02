@@ -2836,7 +2836,7 @@ static const asProperty_t gametypedescr_Properties[] =
 static const asClassDescriptor_t asGametypeClassDescriptor =
 {
 	"cGametypeDesc",				/* name */
-	asOBJ_REF|asOBJ_NOHANDLE,		/* object type flags */
+	(asEObjTypeFlags) (asOBJ_REF|asOBJ_NOHANDLE),		/* object type flags */
 	sizeof( gametype_descriptor_t ), /* size */
 	gametypedescr_ObjectBehaviors, /* object behaviors */
 	NULL,						/* global behaviors */
@@ -2881,7 +2881,7 @@ static const asProperty_t game_Properties[] =
 static const asClassDescriptor_t asGameClassDescriptor =
 {
 	"cGame",						/* name */
-	asOBJ_REF|asOBJ_NOHANDLE,		/* object type flags */
+	(asEObjTypeFlags)(asOBJ_REF|asOBJ_NOHANDLE),		/* object type flags */
 	sizeof( game_locals_t ),	/* size */
 	game_ObjectBehaviors,		/* object behaviors */
 	NULL,						/* global behaviors */

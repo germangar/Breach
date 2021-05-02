@@ -238,6 +238,10 @@
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
+    <CustomBuildStep>
+      <Command>copy "$(TargetPath)" ".\..\..\media"</Command>
+      <Outputs>.\..\..\media\$(TargetName);%(Outputs)</Outputs>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <PreBuildEvent>

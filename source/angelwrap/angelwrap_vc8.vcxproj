@@ -214,6 +214,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <CustomBuildStep>
       <Message>Performing Custom Build Step</Message>
+      <Command>copy "$(TargetPath)" ".\..\..\media\libs"</Command>
+      <Outputs>.\..\..\media\libs\$(TargetName);%(Outputs)</Outputs>
     </CustomBuildStep>
     <Midl>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -249,7 +251,7 @@
     </ResourceCompile>
     <Link>
       <AdditionalDependencies>angelscriptd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(Configuration)$(Platform)\angelwrap_x64.dll</OutputFile>
+      <OutputFile>$(Configuration)\$(Platform)\angelwrap_x64.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>..\win32\x64\lib\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\Debug\x64\$(TargetFileName).intermediate.manifest</ManifestFile>
