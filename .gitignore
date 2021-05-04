@@ -104,3 +104,5 @@ media/libs/snd_qf_x86.dll
 media/warsow_x64.exe
 media/warsow_x86.exe
 media/wsw_server_x86.exe
+media/base/console.log
+media/base/tempmodules*
