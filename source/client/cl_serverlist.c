@@ -328,20 +328,14 @@ static void CL_ParseGetServersResponse2( msg_t *msg )
 	MSG_ReadLong( msg ); // skip the -1
 
 	//jump over the command name
-	if( !MSG_SkipData( msg, strlen( "getserversResponse" ) ) )
+	if( !MSG_SkipData( msg, strlen( "getserversResponse\\" ) ) )
 	{
 		Com_Printf( "Invalid master packet ( missing getserversResponse )\n" );
 		return;
 	}
 
-	while( msg->readcount + 7 <= msg->cursize )
+	while( msg->readcount +6 <= msg->cursize )
 	{
-		if( '\\' != MSG_ReadChar( msg ) )
-		{
-			Com_Printf( "Invalid master packet ( missing separator )\n" );
-			break;
-		}
-
 		MSG_ReadData( msg, addr, 4 );
 		port = BigShort( MSG_ReadShort( msg ) );
 		if( 0 == port )
@@ -359,6 +353,12 @@ static void CL_ParseGetServersResponse2( msg_t *msg )
 		}
 		//Netchan_OutOfBandPrint( NS_CLIENT, adr, requestString );
 		CL_AddServerToList( adrString );
+
+		if( '\\' != MSG_ReadChar( msg ) )
+		{
+			Com_Printf( "Invalid master packet ( missing seperator )\n" );
+			break;
+		}
 	}
 }
 

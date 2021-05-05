@@ -52,9 +52,10 @@ static int SV_FindIndex( const char *name, int start, int max, qboolean create )
 
 	Q_strncpyz( sv.configstrings[start+i], name, sizeof( sv.configstrings[i] ) );
 
-	// send the update to everyone
 	if( sv.state != ss_loading )
+	{ // send the update to everyone
 		SV_SendServerCommand( NULL, "cs %i \"%s\"", start+i, name );
+	}
 
 	return i;
 }

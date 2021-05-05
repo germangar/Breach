@@ -304,7 +304,6 @@ qboolean SV_SendClientsFragments( void )
 {
 	int i;
 	client_t *client;
-	qboolean sent = qfalse;
 	qboolean remaining = qfalse;
 
 	// send a message to each connected client
@@ -312,21 +311,17 @@ qboolean SV_SendClientsFragments( void )
 	{
 		if( !client->state )
 			continue;
-
 		if( client->fakeClient )
 			continue;
 
-		if( !client->netchan.unsentFragments )
-			continue;
-
-		Netchan_TransmitNextFragment( &client->netchan );
-		sent = qtrue;
+		if( client->netchan.unsentFragments )
+			Netchan_TransmitNextFragment( &client->netchan );
 
 		if( client->netchan.unsentFragments )
 			remaining = qtrue;
 	}
 
-	return sent;
+	return remaining;
 }
 
 //==================

@@ -40,6 +40,8 @@ static void G_PrecacheLightStyles( void )
 	trap_ConfigString( CS_LIGHTS + 63, "a" );
 }
 
+const char *ED_ParseEntity( const char *data, gentity_t *ent );
+
 /*
 * G_InitLevel
 * reinitializes the level subsystems and the map entities. Called
@@ -52,12 +54,10 @@ void G_InitLevel( const char *mapname, const char *entities, int entstrlen, unsi
 	char *mapString = NULL;
 	gentity_t *ent = NULL;
 	char *token;
-	int i;
 
 	game.serverTime = serverTime;
 
 	GS_FreeSpacePartition();
-
 	G_asShutdownGametypeScript();
 
 	if( !entities )
@@ -69,7 +69,7 @@ void G_InitLevel( const char *mapname, const char *entities, int entstrlen, unsi
 	Q_strncpyz( name, mapname, sizeof( name ) );
 
 	// clear old data
-	G_LevelInitPool( strlen( mapname ) + 1 + ( entstrlen + 1 ) * 2 + G_LEVELPOOL_BASE_SIZE );
+	G_LevelInitPool( strlen(mapname) + 1 + (entstrlen + 1) * 2 + G_LEVEL_DEFAULT_POOL_SIZE );
 	memset( &level, 0, sizeof( level ) );
 	memset( &gs.gameState, 0, sizeof( gs.gameState ) );
 
@@ -97,11 +97,8 @@ void G_InitLevel( const char *mapname, const char *entities, int entstrlen, unsi
 	trap_ConfigString( CS_SKYBOX, "" );
 	trap_ConfigString( CS_AUDIOTRACK, "" );
 
-	for( i = 0; i < gs.maxclients; i++ )
-		G_ClientUpdateInfoString( &game.clients[i] );
-
 	// initialize level subsystems
-	G_PrecacheGameCommands();
+	G_InitGameCommands();
 	G_PrecacheLightStyles();
 	G_PrecacheItems();
 	G_PrecacheLocalSounds();
@@ -120,10 +117,12 @@ void G_InitLevel( const char *mapname, const char *entities, int entstrlen, unsi
 	entities = level.mapString;
 	while( entities )
 	{
-		const char *s = entities; // FIXME: This is only done to detect the end of the file
-		token = COM_Parse( &s );
+		token = COM_Parse( &entities );
 		if( !token[0] )
 			break;
+
+		if( token[0] != '{' )
+			GS_Error( "G_SpawnMapEntities: found %s when expecting {", token );
 
 		if( !ent ) // first entity is always the worldspawn
 		{
@@ -133,16 +132,10 @@ void G_InitLevel( const char *mapname, const char *entities, int entstrlen, unsi
 		else
 			ent = G_Spawn();
 
-		ent->spawnString = entities; // keep track of string definition of this entity
+		// parse the entity string
+		entities = ED_ParseEntity( entities, ent );
 
-		if( !G_ParseEntity( &entities ) )
-		{
-			G_FreeEntity( ent );
-			ent->freetimestamp = 0; // don't wait for reusing it
-			continue;
-		}
-
-		if( !G_SpawnEntity( ent ) )
+		if( !G_CallSpawn( ent ) ) // call this entity spawning function
 		{
 			G_FreeEntity( ent );
 			ent->freetimestamp = 0; // don't wait for reusing it

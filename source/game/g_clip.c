@@ -147,7 +147,6 @@ entity_state_t *GClip_GetClipStateForDeltaTime( int entNum, int deltaTime )
 	return &clipState;
 }
 
-
 /*
 * GClip_PointCluster
 * we don't have a trap for CM_PointLeafnum, and I don't think it's worth adding it
@@ -440,7 +439,7 @@ void GClip_LinkEntity( gentity_t *ent )
 				ent->s.flags |= SFL_ACTIVABLE;
 			}
 		}
-		else if( ( ent->s.solid != SOLID_TRIGGER ) && ( ent->activate || ent->asActivateFuncID >= 0 ) && !ent->targetname )
+		else if( ( ent->s.solid != SOLID_TRIGGER ) && ent->activate && !ent->targetname )
 			ent->s.flags |= SFL_ACTIVABLE;
 	}
 }

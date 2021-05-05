@@ -265,38 +265,14 @@ static void CL_CheckForResend( void )
 	}
 }
 
-static void CL_Connect( const char *servername, netadr_t *serveraddress )
-{
-	CL_Disconnect( NULL );
-
-	NET_Config( qtrue );    // allow remote
-
-	cls.serveraddress = *serveraddress;
-	if( cls.serveraddress.port == 0 )
-		cls.serveraddress.port = BigShort( PORT_SERVER );
-
-	if( cls.servername )
-		Mem_ZoneFree( cls.servername );
-	cls.servername = ZoneCopyString( servername );
-
-	memset( cl.configstrings, 0, sizeof( cl.configstrings ) );
-	CL_SetClientState( CA_CONNECTING );
-	cls.connect_time = -99999; // CL_CheckForResend() will fire immediately
-	cls.connect_count = 0;
-	cls.rejected = qfalse;
-	cls.lastPacketReceivedTime = cls.realtime; // reset the timeout limit
-}
-
 /*
 * CL_Connect_f
 */
 static void CL_Connect_f( void )
 {
 	netadr_t serveraddress; // save of address before calling CL_Disconnect
-	char password[64];
-	const char *extension;
-	char *connectstring, *connectstring_base;
-	const char *tmp, *scheme = APP_URI_SCHEME, *proto_scheme = APP_URI_PROTO_SCHEME;
+	char *servername, password[64];
+	const char *tmp, *connectstring, *scheme = APP_URI_SCHEME, *proto_scheme = APP_URI_PROTO_SCHEME;
 
 	if( Cmd_Argc() != 2 )
 	{
@@ -304,55 +280,48 @@ static void CL_Connect_f( void )
 		return;
 	}
 
-	connectstring_base = TempCopyString( Cmd_Argv( 1 ) );
-	connectstring = connectstring_base;
-
+	connectstring = Cmd_Argv( 1 );
 	if( !Q_strnicmp( connectstring, proto_scheme, strlen( proto_scheme ) ) )
 		connectstring += strlen( proto_scheme );
 	else if( !Q_strnicmp( connectstring, scheme, strlen( scheme ) ) )
 		connectstring += strlen( scheme );
 
-	extension = COM_FileExtension( connectstring );
-	if( extension && !Q_stricmp( COM_FileExtension( connectstring ), APP_DEMO_EXTENSION_STR ) )
-	{
-		char *temp;
-		size_t temp_size;
-		const char *http_scheme = "http://";
-
-		if( !Q_strnicmp( connectstring, http_scheme, strlen( http_scheme ) ) )
-			connectstring += strlen( http_scheme );
-
-		temp_size = strlen( "demo " ) + strlen( http_scheme ) + strlen( connectstring ) + 1;
-		temp = Mem_TempMalloc( temp_size );
-		Q_snprintfz( temp, temp_size, "demo %s%s", http_scheme, connectstring );
-
-		Cbuf_ExecuteText( EXEC_NOW, temp );
-
-		Mem_TempFree( temp );
-		Mem_TempFree( connectstring_base );
-		return;
-	}
-
 	if ( ( tmp = Q_strrstr(connectstring, "@") ) != NULL ) {
-		Q_strncpyz( password, connectstring, min(sizeof(password),( tmp - connectstring + 1)) );
+		Q_strncpyz(password, connectstring, min(sizeof(password),( tmp - connectstring + 1)) );
 		Cvar_Set( "password", password );
-		connectstring = connectstring + (tmp - connectstring) + 1;
-	}
-
-	if ( ( tmp = Q_strrstr(connectstring, "/") ) != NULL ) {
-		connectstring[tmp - connectstring] = '\0';
+		connectstring = tmp + 1;
 	}
 
 	if( !NET_StringToAddress( connectstring, &serveraddress ) )
 	{
 		Com_Printf( "Bad server address\n" );
-		Mem_TempFree( connectstring_base );
 		return;
 	}
 
-	Mem_TempFree( connectstring_base );
+	servername = TempCopyString( connectstring );
 
-	CL_Connect( connectstring, &serveraddress );
+	// if running a local server, kill it and reissue
+	if( Com_ServerState() )
+		SV_Shutdown( "Server quit\n", qfalse );
+	
+	CL_Disconnect( NULL );
+
+	NET_Config( qtrue );    // allow remote
+
+	cls.serveraddress = serveraddress;
+	if( cls.serveraddress.port == 0 )
+		cls.serveraddress.port = BigShort( PORT_SERVER );
+
+	if( cls.servername )
+		Mem_ZoneFree( cls.servername );
+	cls.servername = servername;
+
+	memset( cl.configstrings, 0, sizeof( cl.configstrings ) );
+	CL_SetClientState( CA_CONNECTING );
+	cls.connect_time = -99999; // CL_CheckForResend() will fire immediately
+	cls.connect_count = 0;
+	cls.rejected = qfalse;
+	cls.lastPacketReceivedTime = cls.realtime; // reset the timeout limit
 }
 
 
@@ -546,7 +515,7 @@ static void CL_SetNext_f( void )
 	}
 
 	// jalfixme: I'm afraid of this being too powerful, since it basically
-	// is allowed to execute everything. Shall we check for something?
+	// is allowed to execute everyting. Shall we check for something?
 	Q_strncpyz( cl_NextString, Cmd_Args(), sizeof( cl_NextString ) );
 	Com_Printf( "NEXT: %s\n", cl_NextString );
 }
@@ -729,20 +698,34 @@ void CL_ServerReconnect_f( void )
 
 	//if we are downloading, we don't change!  This so we don't suddenly stop downloading a map
 	if( cls.download.filenum || cls.download.web )
-	{
-		cls.download.pending_reconnect = qtrue;
 		return;
-	}
 
 	cls.connect_count = 0;
 	cls.rejected = 0;
 
 	CL_SoundModule_StopAllSounds();
+	if( cls.state >= CA_CONNECTED )
+	{
+		Com_Printf( "reconnecting...\n" );
+		memset( cl.configstrings, 0, sizeof( cl.configstrings ) );
+		CL_SetClientState( CA_HANDSHAKE );
+		CL_AddReliableCommand( "new" );
+		return;
+	}
 
-	Com_Printf( "reconnecting...\n" );
-	memset( cl.configstrings, 0, sizeof( cl.configstrings ) );
-	CL_SetClientState( CA_HANDSHAKE );
-	CL_AddReliableCommand( "new" );
+	if( cls.servername )
+	{
+		if( cls.state >= CA_CONNECTED )
+		{
+			CL_Disconnect( NULL );
+			cls.connect_time = Sys_Milliseconds() - 1500;
+		}
+		else
+			cls.connect_time = -99999; // fire immediately
+		Com_Printf( "reconnecting...\n" );
+	}
+
+	CL_SetClientState( CA_CONNECTING );
 }
 
 /*
@@ -927,8 +910,8 @@ static void CL_ConnectionlessPacket( msg_t *msg )
 		if( !NET_CompareBaseAdr( &net_from, &cls.serveraddress ) )
 		{
 			Com_Printf( "challenge from a different address.  Ignored.\n" );
-			Com_Printf( "Was %s ", NET_AddressToString( &net_from ) );
-			Com_Printf( "should have been %s\n", NET_AddressToString( &cls.serveraddress ) );
+			Com_Printf( "Was %s should have been %s\n", NET_AddressToString( &net_from ),
+				NET_AddressToString( &cls.serveraddress ) );
 			return;
 		}
 
@@ -1567,7 +1550,7 @@ static void CL_InitLocal( void )
 #ifdef PUTCPU2SLEEP
 	cl_sleep =		Cvar_Get( "cl_sleep", "0", CVAR_ARCHIVE );
 #endif
-	cl_extrapolate =	Cvar_Get( "cl_extrapolate", "1", CVAR_DEVELOPER );
+	cl_extrapolate =	Cvar_Get( "cl_extrapolate", "1", CVAR_ARCHIVE );
 	cl_pps =		Cvar_Get( "cl_pps", "63", CVAR_ARCHIVE );
 	cl_compresspackets =	Cvar_Get( "cl_compresspackets", "1", CVAR_ARCHIVE );
 
@@ -1585,8 +1568,7 @@ static void CL_InitLocal( void )
 	cl_timedemo =		Cvar_Get( "timedemo", "0", CVAR_CHEAT );
 	cl_demoavi_video =	Cvar_Get( "cl_demoavi_video", "1", CVAR_ARCHIVE );
 	cl_demoavi_audio =	Cvar_Get( "cl_demoavi_audio", "0", CVAR_ARCHIVE );
-	cl_demoavi_fps =	Cvar_Get( "cl_demoavi_fps", "30.303030", CVAR_ARCHIVE );
-	cl_demoavi_fps->modified = qtrue;
+	cl_demoavi_fps =	Cvar_Get( "cl_demoavi_fps", "30", CVAR_ARCHIVE );
 	cl_demoavi_scissor =	Cvar_Get( "cl_demoavi_scissor", "0", CVAR_ARCHIVE );
 
 	rcon_client_password =	Cvar_Get( "rcon_password", "", 0 );
@@ -1738,29 +1720,19 @@ static qboolean CL_MaxPacketsReached( void )
 	static float roundingMsec = 0.0f;
 	int minpackettime;
 	int elapsedTime;
-	float minTime;
 
 	if( lastPacketTime > cls.realtime )
 		lastPacketTime = cls.realtime;
 
-	if( cl_pps->integer > 63 || cl_pps->integer < 20 )
+	if( cl_pps->integer > 62 || cl_pps->integer < 15 )
 	{
-		Com_Printf( "'cl_pps' value is out of valid range, resetting to default\n" );
-		Cvar_ForceSet( "cl_pps", va( "%s", cl_pps->dvalue ) );
+		Com_Printf( "'cl_pps' value is out of valid range, reseting to default\n" );
+		Cvar_Set( "cl_pps", cl_pps->dvalue );
 	}
 
 	elapsedTime = cls.realtime - lastPacketTime;
-	minTime = ( 1000.0f / cl_pps->value );
-
-	// don't let cl_pps be smaller than sv_pps
-	if( cls.state == CA_ACTIVE && !cls.demo.playing && cl.snapFrameTime )
-	{
-		if( (unsigned int)minTime > cl.snapFrameTime )
-			minTime = cl.snapFrameTime;
-	}
-
-	minpackettime = (int)minTime;
-	roundingMsec += minTime - (int)minTime;
+	minpackettime = ( 1000.0f / cl_pps->value );
+	roundingMsec += ( 1000.0f / cl_pps->value ) - minpackettime;
 	if( roundingMsec >= 1.0f )
 	{
 		minpackettime += (int)roundingMsec;
@@ -1786,9 +1758,6 @@ void CL_SendMessagesToServer( qboolean sendNow )
 		return;
 
 	if( cls.demo.playing )
-		return;
-
-	if( SCR_GetCinematicTime() )
 		return;
 
 	MSG_Init( &message, messageData, sizeof( messageData ) );
@@ -1852,16 +1821,30 @@ static void CL_NetFrame( int realmsec )
 */
 void CL_AdjustServerTime( unsigned int gamemsec )
 {
-	// hurry up if coming late
-	if( ( cl.newServerTimeDelta < cl.serverTimeDelta ) && ( gamemsec > 1 ) )
-		cl.serverTimeDelta--;
-	if( cl.newServerTimeDelta > cl.serverTimeDelta )
-		cl.serverTimeDelta++;
+	// hurry up if coming late (unless in demos)
+	if( cls.demo.playing )
+	{
+		cl.newServerTimeDelta = cl.serverTimeDelta;
+	}
+	else
+	{
+		if( ( cl.newServerTimeDelta < cl.serverTimeDelta ) && ( gamemsec > 1 ) )
+			cl.serverTimeDelta--;
+		if( cl.newServerTimeDelta > cl.serverTimeDelta )
+			cl.serverTimeDelta++;
+	}
 
 	if( cls.gametime + cl.serverTimeDelta < 0 )  // should never happen
 		cl.serverTimeDelta = 0;
 
 	cl.serverTime = cls.gametime + cl.serverTimeDelta;
+
+	if( cl_extrapolate->integer && !cls.demo.playing )
+		cl.extrapolationTime = cl.snapFrameTime * 0.5;
+	else
+		cl.extrapolationTime = 0;
+
+	cl.serverTime += cl.extrapolationTime;
 
 	// it launches a new snapshot when the timestamp of the CURRENT snap is reached.
 	if( cl.pendingSnapNum && ( cl.serverTime >= cl.snapShots[cl.currentSnapNum & SNAPS_BACKUP_MASK].timeStamp ) )
@@ -1880,21 +1863,7 @@ void CL_AdjustServerTime( unsigned int gamemsec )
 	}
 }
 
-/*
-* CL_RestartTimeDeltas
-*/
-void CL_RestartTimeDeltas( unsigned int newTimeDelta )
-{
-	int i;
-
-	cl.serverTimeDelta = cl.newServerTimeDelta = newTimeDelta;
-	for( i = 0; i < MAX_TIMEDELTAS_BACKUP; i++ )
-		cl.serverTimeDeltas[i] = newTimeDelta;
-
-	if( cl_debug_timeDelta->integer )
-		Com_Printf( S_COLOR_CYAN"***** timeDelta restarted\n" );
-}
-
+#ifdef SMOOTHSERVERTIME
 /*
 * CL_SmoothTimeDeltas
 */
@@ -1904,14 +1873,6 @@ int CL_SmoothTimeDeltas( void )
 	int count;
 	double delta;
 	snapshot_t *snap;
-
-	if( cls.demo.playing )
-	{
-		if( cl.currentSnapNum <= 0 ) // if first snap
-			return cl.serverTimeDeltas[cl.pendingSnapNum & MASK_TIMEDELTAS_BACKUP];
-
-		return cl.serverTimeDeltas[cl.currentSnapNum & MASK_TIMEDELTAS_BACKUP];
-	}
 
 	count = cl.receivedSnapNum - MASK_TIMEDELTAS_BACKUP;
 	if( count < 0 )
@@ -1933,6 +1894,7 @@ int CL_SmoothTimeDeltas( void )
 
 	return (int)( delta / (double)count );
 }
+#endif
 
 /*
 * CL_UpdateSnapshot - Check for pending snapshots, and fire if needed
@@ -1958,8 +1920,28 @@ void CL_UpdateSnapshot( void )
 		{
 			cl.pendingSnapNum = snap->snapNum;
 
-			cl.newServerTimeDelta = CL_SmoothTimeDeltas() + cl.extrapolationTime;
-
+#ifdef SMOOTHSERVERTIME
+			if( cls.demo.playing )
+			{
+				if( cl.currentSnapNum <= 0 ) // if first snap
+					cl.newServerTimeDelta = snap->timeStamp - cls.gametime;
+				else
+					cl.newServerTimeDelta = cl.snapShots[cl.currentSnapNum & SNAPS_BACKUP_MASK].timeStamp - cls.gametime;
+			}
+			else
+			{
+				cl.newServerTimeDelta = CL_SmoothTimeDeltas();
+			}
+#else
+			if( cl.currentSnapNum <= 0 )
+			{                  // if first snap
+				cl.newServerTimeDelta = snap->timeStamp - cls.gametime;
+			}
+			else
+			{
+				cl.newServerTimeDelta = cl.frames[cl.currentSnapNum & SNAPS_BACKUP_MASK].timeStamp - cls.gametime;
+			}
+#endif
 			// if we don't have current snap (or delay is too big) don't wait to fire the pending one
 			if( cl.currentSnapNum <= 0 || ( abs( cl.newServerTimeDelta - cl.serverTimeDelta ) > 200 ) )
 			{
@@ -1996,16 +1978,6 @@ void CL_Frame( int realmsec, int gamemsec )
 	}
 
 	// demoavi
-	if( cl_demoavi_fps->modified )
-	{
-		float newvalue = 1000.0f / (int)( 1000.0f/cl_demoavi_fps->value );
-		if( fabs( newvalue - cl_demoavi_fps->value ) > 0.001 )
-			Com_Printf( "cl_demoavi_fps value has been adjusted to %.4f\n", newvalue );
-
-		Cvar_SetValue( "cl_demoavi_fps", newvalue );
-		cl_demoavi_fps->modified = qfalse;
-	}
-
 	if( ( cls.demo.avi || cls.demo.pending_avi ) && cls.state == CA_ACTIVE )
 	{
 		if( cls.demo.pending_avi && !cls.demo.avi )
@@ -2027,11 +1999,6 @@ void CL_Frame( int realmsec, int gamemsec )
 
 	allRealMsec += realmsec;
 	allGameMsec += gamemsec;
-
-	if( cl_extrapolate->integer && !cls.demo.playing )
-		cl.extrapolationTime = cl.snapFrameTime * 0.5;
-	else
-		cl.extrapolationTime = 0;
 
 	CL_UpdateSnapshot();
 	CL_AdjustServerTime( gamemsec );
@@ -2115,7 +2082,7 @@ void CL_Frame( int realmsec, int gamemsec )
 	}
 
 	// update audio
-	if( cls.state != CA_ACTIVE || SCR_GetCinematicTime() )
+	if( cls.state != CA_ACTIVE || SCR_GetCinematicTime() > 0 )
 	{
 		// if the loading plaque is up, clear everything out to make sure we aren't looping a dirty
 		// dma buffer while loading

@@ -66,7 +66,7 @@ static void G_Plat_SpawnTrigger( gentity_t *ent, qboolean bottom_trigger )
 	trigger->s.local.maxs[0] += expand_size;
 	trigger->s.local.maxs[1] += expand_size;
 
-	trigger->s.local.mins[2] += atof( G_GetEntitySpawnKey( "lip", trigger ) );
+	trigger->s.local.mins[2] += st.lip;
 
 	if( bottom_trigger )
 	{
@@ -99,8 +99,6 @@ static void G_Plat_SpawnTrigger( gentity_t *ent, qboolean bottom_trigger )
 void G_Func_Plat( gentity_t *ent )
 {
 	qboolean bottom_trigger = qtrue;
-	float lip;
-	float height;
 
 	G_InitMover( ent );
 
@@ -108,13 +106,13 @@ void G_Func_Plat( gentity_t *ent )
 	if( ent->mover.wait == 0 && !( ent->spawnflags & MOVER_FLAG_TOGGLE ) )
 		ent->mover.wait = 2000;
 
-	ent->mover.speed = atof( G_GetEntitySpawnKey( "speed", ent ) );
-	if( ent->mover.speed <= 0 )
+	if( st.speed > 0 )
+		ent->mover.speed = st.speed;
+	if( !ent->mover.speed )
 		ent->mover.speed = 300;
 
-	lip = atof( G_GetEntitySpawnKey( "lip", ent ) );
-	if( !lip )
-		lip = 8;
+	if( !st.lip )
+		st.lip = 8;
 
 	if( ent->delay < 60 )
 		ent->delay = 60;
@@ -135,12 +133,10 @@ void G_Func_Plat( gentity_t *ent )
 	// start is the top position, end is the bottom
 	VectorCopy( ent->s.ms.origin, ent->mover.start_origin );
 	VectorCopy( ent->s.ms.origin, ent->mover.end_origin );
-
-	height = atof( G_GetEntitySpawnKey( "height", ent ) );
-	if( height )
-		ent->mover.start_origin[2] -= height;
+	if( st.height )
+		ent->mover.start_origin[2] -= st.height;
 	else
-		ent->mover.start_origin[2] -= ( ent->s.local.maxs[2] - ent->s.local.mins[2] ) - lip;
+		ent->mover.start_origin[2] -= ( ent->s.local.maxs[2] - ent->s.local.mins[2] ) - st.lip;
 
 	VectorClear( ent->s.ms.angles );
 	VectorCopy( ent->s.ms.angles, ent->mover.start_angles );
@@ -220,7 +216,6 @@ void G_Func_Door( gentity_t *ent )
 	vec3_t abs_movedir;
 	vec3_t absmins, absmaxs, size;
 	float dist;
-	float lip;
 
 	G_InitMover( ent );
 	ent->mover.is_areaportal = qtrue;
@@ -229,13 +224,13 @@ void G_Func_Door( gentity_t *ent )
 	if( ent->mover.wait == 0 && !( ent->spawnflags & MOVER_FLAG_TOGGLE ) )
 		ent->mover.wait = 2000;
 
-	ent->mover.speed = atof( G_GetEntitySpawnKey( "speed", ent ) );
-	if( ent->mover.speed <= 0 )
+	if( st.speed > 0 )
+		ent->mover.speed = st.speed;
+	if( !ent->mover.speed )
 		ent->mover.speed = 1200;
 
-	lip = atof( G_GetEntitySpawnKey( "lip", ent ) );
-	if( !lip )
-		lip = 8;
+	if( !st.lip )
+		st.lip = 8;
 
 	if( ent->delay < 0 )
 		ent->delay = 0;
@@ -258,7 +253,7 @@ void G_Func_Door( gentity_t *ent )
 #if 0
 	G_SetMovedir( ent->s.ms.angles, ent->mover.movedir );
 #else
-	G_SetMovedir( tv( 0, atof( G_GetEntitySpawnKey( "anglehack", ent ) ), 0 ), ent->mover.movedir );
+	G_SetMovedir( tv( 0, st.anglehack, 0 ), ent->mover.movedir );
 #endif
 	// calculate positions
 	cmodel = GS_CModelForEntity( &ent->s );
@@ -270,7 +265,7 @@ void G_Func_Door( gentity_t *ent )
 	abs_movedir[0] = fabs( ent->mover.movedir[0] );
 	abs_movedir[1] = fabs( ent->mover.movedir[1] );
 	abs_movedir[2] = fabs( ent->mover.movedir[2] );
-	dist = abs_movedir[0] * size[0] + abs_movedir[1] * size[1] + abs_movedir[2] * size[2] - lip;
+	dist = abs_movedir[0] * size[0] + abs_movedir[1] * size[1] + abs_movedir[2] * size[2] - st.lip;
 
 	VectorCopy( ent->s.ms.origin, ent->mover.start_origin );
 	VectorMA( ent->mover.start_origin, dist, ent->mover.movedir, ent->mover.end_origin );
@@ -305,7 +300,7 @@ void G_Func_Door( gentity_t *ent )
 */
 void G_Func_Door_Rotating( gentity_t *ent )
 {
-	float distance;
+	float dist;
 
 	G_InitMover( ent );
 	ent->mover.rotating = qtrue;
@@ -315,8 +310,9 @@ void G_Func_Door_Rotating( gentity_t *ent )
 	if( ent->mover.wait == 0 && !( ent->spawnflags & MOVER_FLAG_TOGGLE ) )
 		ent->mover.wait = 2000;
 
-	ent->mover.speed = atof( G_GetEntitySpawnKey( "speed", ent ) );
-	if( ent->mover.speed <= 0 )
+	if( st.speed > 0 )
+		ent->mover.speed = st.speed;
+	if( !ent->mover.speed )
 		ent->mover.speed = 300;
 
 	if( ent->delay < 0 )
@@ -338,17 +334,16 @@ void G_Func_Door_Rotating( gentity_t *ent )
 	G_RotationFromAngles( ent->s.ms.angles, ent->mover.movedir );
 	VectorClear( ent->s.ms.angles );
 
-	distance = atof( G_GetEntitySpawnKey( "distance", ent ) );
-	if( !distance )
+	if( !st.distance )
 	{
 		if( developer->integer )
 			GS_Printf( "%s at %s with no distance set\n", ent->classname, vtos( ent->s.ms.origin ) );
-
-		distance = 90;
+		st.distance = 90;
 	}
 
+	dist = st.distance;
 	VectorCopy( ent->s.ms.angles, ent->mover.start_angles );
-	VectorMA( ent->mover.start_angles, distance, ent->mover.movedir, ent->mover.end_angles );
+	VectorMA( ent->mover.start_angles, dist, ent->mover.movedir, ent->mover.end_angles );
 
 
 	if( !ent->targetname )
@@ -411,23 +406,20 @@ void G_Func_Button( gentity_t *ent )
 	vec3_t absmins, absmaxs, size;
 	vec3_t abs_movedir;
 	float dist;
-	float lip;
 
 	G_InitMover( ent );
 
 #if 1
 	G_SetMovedir( ent->s.ms.angles, ent->mover.movedir );
 #else
-	G_SetMovedir( tv( 0, atof( G_GetEntitySpawnKey( "anglehack", ent ) ), 0 ), ent->mover.movedir );
+	G_SetMovedir( tv( 0, st.anglehack, 0 ), ent->mover.movedir );
 #endif
 
 	ent->mover.wait = ent->wait * 1000;
-
-	ent->mover.speed = atof( G_GetEntitySpawnKey( "speed", ent ) );
-	if( ent->mover.speed <= 0 )
+	if( st.speed > 0 )
+		ent->mover.speed = st.speed;
+	if( !ent->mover.speed )
 		ent->mover.speed = 150;
-
-	lip = atof( G_GetEntitySpawnKey( "lip", ent ) );
 
 	ent->mover.sound = 0;
 	ent->mover.event_endpos = 0;
@@ -453,7 +445,7 @@ void G_Func_Button( gentity_t *ent )
 	abs_movedir[0] = fabs( ent->mover.movedir[0] );
 	abs_movedir[1] = fabs( ent->mover.movedir[1] );
 	abs_movedir[2] = fabs( ent->mover.movedir[2] );
-	dist = abs_movedir[0] * size[0] + abs_movedir[1] * size[1] + abs_movedir[2] * size[2] - lip;
+	dist = abs_movedir[0] * size[0] + abs_movedir[1] * size[1] + abs_movedir[2] * size[2] - st.lip;
 
 	VectorCopy( ent->s.ms.origin, ent->mover.start_origin );
 	VectorMA( ent->mover.start_origin, dist, ent->mover.movedir, ent->mover.end_origin );
@@ -496,13 +488,17 @@ void G_Func_Rotating( gentity_t *ent )
 {
 	G_InitMover( ent );
 
-	ent->mover.speed = atof( G_GetEntitySpawnKey( "speed", ent ) );
+	ent->mover.speed = st.speed;
 	if( ent->mover.speed <= 0 )
+	{
 		ent->mover.speed = 400;
+	}
 
-	ent->mover.accel = atof( G_GetEntitySpawnKey( "accel", ent ) );
+	ent->mover.accel = st.accel;
 	if( ent->mover.accel <= 0 )
+	{
 		ent->mover.accel = 40;
+	}
 
 	ent->mover.wait = ent->wait * 1000;
 

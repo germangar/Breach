@@ -7,7 +7,6 @@
 
 extern qboolean G_ClientConnect( int clientNum, char *userinfo, qboolean fakeClient );
 extern void G_ClientDisconnect( int clientNum );
-extern void G_ClientUpdateInfoString( gclient_t *client );
 extern void G_ClientUserinfoChanged( int clientNum, char *userinfo );
 extern gentity_t *G_SpawnFakeClient( const char *name );
 extern void G_WriteDeltaPlayerState( int clientNum, unsigned int deltaSnapNum, unsigned int snapNum, msg_t *msg );

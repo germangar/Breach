@@ -30,7 +30,9 @@ ROQ PLAYING
 */
 
 /*
-* SCR_StopCinematic
+==================
+SCR_StopCinematic
+==================
 */
 void SCR_StopCinematic( void )
 {
@@ -58,8 +60,11 @@ void SCR_StopCinematic( void )
 }
 
 /*
-* SCR_FinishCinematic
-* Called when either the cinematic completes, or it is aborted
+====================
+SCR_FinishCinematic
+
+Called when either the cinematic completes, or it is aborted
+====================
 */
 void SCR_FinishCinematic( void )
 {
@@ -69,7 +74,9 @@ void SCR_FinishCinematic( void )
 //==========================================================================
 
 /*
-* SCR_InitCinematic
+==================
+SCR_InitCinematic
+==================
 */
 void SCR_InitCinematic( void )
 {
@@ -77,15 +84,9 @@ void SCR_InitCinematic( void )
 }
 
 /*
-* SCR_ValidCinematic
-*/
-qboolean SCR_ValidCinematic( void )
-{
-	return cl.cin != NULL;
-}
-
-/*
-* SCR_ReadNextCinematicFrame
+==================
+SCR_ReadNextCinematicFrame
+==================
 */
 static qbyte *SCR_ReadNextCinematicFrame( void )
 {
@@ -117,26 +118,31 @@ static qbyte *SCR_ReadNextCinematicFrame( void )
 }
 
 /*
-* SCR_GetCinematicTime
+==================
+SCR_GetCinematicTime
+==================
 */
 unsigned int SCR_GetCinematicTime( void )
 {
-	if( !SCR_ValidCinematic() )
-		return 0;
-	return (( cinematics_t * )cl.cin)->time;
+	cinematics_t *cin = ( cinematics_t * )cl.cin;
+	return cin ? cin->time : 0;
 }
 
 /*
-* SCR_RunCinematic
+==================
+SCR_RunCinematic
+==================
 */
 void SCR_RunCinematic( void )
 {
-	unsigned int realtime;
 	unsigned int frame;
-	cinematics_t *cin;
+	cinematics_t *cin = cl.cin;
 
-	if( !SCR_GetCinematicTime() )
+	if( !cin || !cin->time )
+	{
+		SCR_StopCinematic();
 		return;
+	}
 
 	if( cls.key_dest != key_game )
 	{
@@ -145,19 +151,13 @@ void SCR_RunCinematic( void )
 		return;
 	}
 
-	cin = ( cinematics_t * )cl.cin;
-	realtime = cls.realtime;
-	if( realtime <= cin->time )
-		return;
-
-	frame = ( realtime - cin->time ) * (float)( RoQ_FRAMERATE ) / 1000;
+	frame = ( Sys_Milliseconds() - cin->time ) * (float)( RoQ_FRAMERATE ) / 1000;
 	if( frame <= cin->frame )
 		return;
-
 	if( frame > cin->frame + 1 )
 	{
 		Com_Printf( "Dropped frame: %i > %i\n", frame, cin->frame + 1 );
-		cin->time = realtime - cin->frame * 1000 / RoQ_FRAMERATE;
+		cin->time = Sys_Milliseconds() - cin->frame * 1000 / RoQ_FRAMERATE;
 	}
 
 	cin->pic = cin->pic_pending;
@@ -171,18 +171,19 @@ void SCR_RunCinematic( void )
 }
 
 /*
-* SCR_DrawCinematic
-* Returns true if a cinematic is active, meaning the view rendering
-* should be skipped
+==================
+SCR_DrawCinematic
+
+Returns true if a cinematic is active, meaning the view rendering
+should be skipped
+==================
 */
 qboolean SCR_DrawCinematic( void )
 {
-	cinematics_t *cin;
+	cinematics_t *cin = cl.cin;
 
-	if( !SCR_ValidCinematic() )
+	if( !cin || cin->time <= 0 )
 		return qfalse;
-
-	cin = ( cinematics_t * )cl.cin;
 	if( !cin->pic )
 		return qtrue;
 
@@ -192,7 +193,9 @@ qboolean SCR_DrawCinematic( void )
 }
 
 /*
-* SCR_PlayCinematic
+==================
+SCR_PlayCinematic
+==================
 */
 static void SCR_PlayCinematic( char *arg )
 {
@@ -221,30 +224,29 @@ static void SCR_PlayCinematic( char *arg )
 		return;
 	}
 
+	SCR_EndLoadingPlaque();
+
+	CL_SetClientState( CA_ACTIVE );
+
 	// read header
 	RoQ_ReadChunk( cin );
 
 	if( chunk->id != RoQ_HEADER1 || chunk->size != RoQ_HEADER2 || chunk->argument != RoQ_HEADER3 )
 	{
-		Com_Printf( "Invalid video file %s\n", cin->name );
-		SCR_StopCinematic();
+		SCR_FinishCinematic();
 		return;
 	}
-
-	SCR_EndLoadingPlaque();
 
 	cin->headerlen = FS_Tell( cin->file );
 	cin->frame = 0;
 	cin->pic = cin->pic_pending = SCR_ReadNextCinematicFrame();
-	cin->time = cls.realtime + 1; // add 1 msec so SCR_GetCinematicTime is also valid for early commands
-
-	CL_SetClientState( CA_ACTIVE );
-
-	CL_SoundModule_StopAllSounds();
+	cin->time = Sys_Milliseconds();
 }
 
 /*
-* CL_PlayCinematic_f
+==================
+CL_PlayCinematic_f
+==================
 */
 void CL_PlayCinematic_f( void )
 {

@@ -386,102 +386,60 @@ static void CG_GenericEntityInterpolateState( centity_t *cent )
 		VectorCopy( cg.predictedEntityState.ms.origin, cent->ent.origin );
 		VectorCopy( cg.predictedEntityState.ms.angles, ent_angles );
 	}
-	// linear projectile extrapolation
-	else if( cent->current.ms.linearProjectileTimeStamp )
-	{
-		unsigned int serverTime;
-
-		if( GS_Paused() )
-			serverTime = cg.frame.timeStamp;
-		else
-		{
-			serverTime = cg.serverTime;
-			// to do. Check that this projectile doesn't belong to our own client before adding this offset
-			if( !cgs.demoPlaying /*&& !ISVIEWERENTITY( cent->current.ownerNum )*/ )
-				serverTime += cent->current.weapon; // add antilag visual compensation
-		}
-
-		GS_Move_LinearProjectile( &cent->current, serverTime, cent->ent.origin, ENTITY_INVALID, 0, 0 );
-
-		for( i = 0; i < 3; i++ )
-			ent_angles[i] = LerpAngle( cent->prev.ms.angles[i], cent->current.ms.angles[i], cg.lerpfrac );
-	}
-	else if( cent->stopped )
-	{
-		VectorCopy( cent->current.ms.origin, cent->ent.origin );
-
-		for( i = 0; i < 3; i++ )
-			ent_angles[i] = LerpAngle( cent->prev.ms.angles[i], cent->current.ms.angles[i], cg.lerpfrac );
-
-	}
-	// extrapolation
-	else if( cent->canExtrapolate && cg.extrapolationTime )
-	{
-		vec3_t origin, xorigin1, xorigin2;
-
-		// extrapolation with half-snapshot smoothing
-		if( cg.xerpTime >= 0 || !cent->canExtrapolatePrev )
-		{
-			VectorMA( cent->current.ms.origin, cg.xerpTime, cent->current.ms.velocity, xorigin1 );
-		}
-		else
-		{
-			VectorMA( cent->current.ms.origin, cg.xerpTime, cent->current.ms.velocity, xorigin1 );
-			if( cent->canExtrapolatePrev )
-			{
-				vec3_t oldPosition;
-
-				VectorMA( cent->prev.ms.origin, cg.oldXerpTime, cent->prev.ms.velocity, oldPosition );
-				VectorLerp( oldPosition, cg.xerpSmoothFrac, xorigin1, xorigin1 );
-			}
-		}
-
-
-		// extrapolation with full-snapshot smoothing
-		VectorMA( cent->current.ms.origin, cg.xerpTime, cent->current.ms.velocity, xorigin2 );
-		if( cent->canExtrapolatePrev )
-		{
-			vec3_t oldPosition;
-
-			VectorMA( cent->prev.ms.origin, cg.oldXerpTime, cent->prev.ms.velocity, oldPosition );
-			VectorLerp( oldPosition, cg.lerpfrac, xorigin2, xorigin2 );
-		}
-
-		VectorLerp( xorigin1, 0.5f, xorigin2, origin );
-
-#if 1
-		VectorCopy( origin, cent->ent.origin );
-#else
-		if( cent->microSmooth == 2 )
-		{
-			vec3_t oldsmoothorigin;
-
-			VectorLerp( cent->microSmoothOrigin2, 0.65f, cent->microSmoothOrigin, oldsmoothorigin );
-			VectorLerp( origin, 0.5f, oldsmoothorigin, cent->ent.origin );
-		}
-		else if( cent->microSmooth == 1 )
-			VectorLerp( origin, 0.5f, cent->microSmoothOrigin, cent->ent.origin );
-		else
-			VectorCopy( origin, cent->ent.origin );
-
-		if( cent->microSmooth )
-			VectorCopy( cent->microSmoothOrigin, cent->microSmoothOrigin2 );
-
-		VectorCopy( origin, cent->microSmoothOrigin );
-		cent->microSmooth++;
-		clamp_high( cent->microSmooth, 2 );
-#endif
-
-		for( i = 0; i < 3; i++ )
-			ent_angles[i] = LerpAngle( cent->prev.ms.angles[i], cent->current.ms.angles[i], cg.lerpfrac );
-	}
-	// linear interpolation
 	else
 	{
-		for( i = 0; i < 3; i++ )
+		// linear projectile extrapolation
+		if( cent->current.ms.linearProjectileTimeStamp )
 		{
-			ent_angles[i] = LerpAngle( cent->prev.ms.angles[i], cent->current.ms.angles[i], cg.lerpfrac );
-			cent->ent.origin[i] = cent->prev.ms.origin[i] + cg.lerpfrac * ( cent->current.ms.origin[i] - cent->prev.ms.origin[i] );
+			unsigned int serverTime;
+
+			if( GS_Paused() )
+				serverTime = cg.frame.timeStamp;
+			else
+			{
+				serverTime = cg.serverTime;
+				// to do. Check that this projectile doesn't belong to our own client before adding this offset
+				if( !cgs.demoPlaying /*&& !ISVIEWERENTITY( cent->current.ownerNum )*/ )
+					serverTime += cent->current.weapon; // add antilag visual compensation
+			}
+
+			GS_Move_LinearProjectile( &cent->current, serverTime, cent->ent.origin, ENTITY_INVALID, 0, 0 );
+
+			for( i = 0; i < 3; i++ )
+				ent_angles[i] = LerpAngle( cent->prev.ms.angles[i], cent->current.ms.angles[i], cg.lerpfrac );
+		}
+		else if( cent->stopped )
+		{
+			VectorCopy( cent->current.ms.origin, cent->ent.origin );
+
+			for( i = 0; i < 3; i++ )
+				ent_angles[i] = LerpAngle( cent->prev.ms.angles[i], cent->current.ms.angles[i], cg.lerpfrac );
+
+		}
+		// extrapolation
+		else if( cent->canExtrapolate && cg.extrapolationTime )
+		{
+			VectorMA( cent->current.ms.origin, cg.xerpTime, cent->current.ms.velocity, cent->ent.origin );
+
+			if( cg.xerpTime < 0.0f && cent->canExtrapolatePrev ) // smooth with the ending of oldsnap-newsnap interpolation
+			{
+				vec3_t oldXerpOrigin;
+
+				VectorMA( cent->prev.ms.origin, cg.oldXerpTime, cent->prev.ms.velocity, oldXerpOrigin );
+				VectorLerp( oldXerpOrigin, cg.xerpSmoothFrac, cent->ent.origin, cent->ent.origin );
+			}
+
+			for( i = 0; i < 3; i++ )
+				ent_angles[i] = LerpAngle( cent->prev.ms.angles[i], cent->current.ms.angles[i], cg.lerpfrac );
+		}
+		// linear interpolation
+		else
+		{
+			for( i = 0; i < 3; i++ )
+			{
+				ent_angles[i] = LerpAngle( cent->prev.ms.angles[i], cent->current.ms.angles[i], cg.lerpfrac );
+				cent->ent.origin[i] = cent->prev.ms.origin[i] + cg.lerpfrac * ( cent->current.ms.origin[i] - cent->prev.ms.origin[i] );
+			}
 		}
 	}
 
@@ -508,10 +466,6 @@ static void CG_GenericEntityNewState( centity_t *cent )
 	cent->ent.scale = 1.0f;
 	cent->ent.renderfx = cent->renderfx;
 	Vector4Set( cent->ent.shaderRGBA, COLOR_R( rgbacolor ), COLOR_G( rgbacolor ), COLOR_B( rgbacolor ), COLOR_A( rgbacolor ) );
-
-	// this doesn't seem to be working?
-	if( GS_IsBrushModel( cent->current.modelindex1 ) )
-		cent->ent.renderfx |= RF_NOSHADOW;
 
 	// set up the model
 	cent->ent.rtype = RT_MODEL;
@@ -606,7 +560,6 @@ void CG_InterpolateEntities( void )
 		case ET_NODRAW:
 		case ET_TRIGGER:
 			break;
-
 		case ET_MODEL:
 		case ET_ITEM:
 		case ET_PLAYER:

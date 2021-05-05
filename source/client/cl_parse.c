@@ -289,17 +289,6 @@ void CL_DownloadDone( void )
 	cls.download.timeout = 0;
 	cls.download.timestart = 0;
 	cls.download.offset = cls.download.baseoffset = 0;
-	cls.download.web = qfalse;
-	cls.download.filenum = 0;
-
-	// the server has changed map during the download
-	if( cls.download.pending_reconnect )
-	{
-		cls.download.pending_reconnect = qfalse;
-		CL_FreeDownloadList();
-		CL_ServerReconnect_f();
-		return;
-	}
 
 	if( requestnext && cls.state > CA_DISCONNECTED )
 		CL_RequestNextDownload();
@@ -488,7 +477,6 @@ static void CL_InitDownload_f( void )
 	cls.download.timestart = Sys_Milliseconds();
 	cls.download.offset = 0;
 	cls.download.baseoffset = 0;
-	cls.download.pending_reconnect = qfalse;
 
 	Cvar_ForceSet( "cl_download_name", COM_FileBase( cls.download.name ) );
 	Cvar_ForceSet( "cl_download_percent", "0" );
@@ -961,64 +949,6 @@ static void CL_ParseBaselines( msg_t *msg )
 	Com_ReadDeltaEntityState( msg, from, to, entNum, bits );
 }
 
-//=================
-//CL_ParseFrame - Parses the frame and stores the data in snap backups, but doesn't fire the new snap
-//=================
-static void CL_ParseFrame( msg_t *msg )
-{
-	snapshot_t *snap, *oldSnap;
-	int delta;
-
-	oldSnap = ( cl.receivedSnapNum > 0 ) ? &cl.snapShots[cl.receivedSnapNum & SNAPS_BACKUP_MASK] : NULL;
-
-	snap = CL_ParseSnapshot( msg );
-
-	if( snap->valid )
-	{
-		cl.receivedSnapNum = snap->snapNum;
-
-		if( cls.demo.recording )
-		{
-			if( cls.demo.waiting && !snap->deltaSnapNum )
-			{
-				cls.demo.waiting = qfalse; // we can start recording now
-				cls.demo.basetime = snap->timeStamp;
-			}
-
-			if( !cls.demo.waiting )
-				cls.demo.duration = snap->timeStamp - cls.demo.basetime;
-		}
-
-		if( cl_debug_timeDelta->integer )
-		{
-			if( oldSnap != NULL && ( oldSnap->snapNum + 1 != snap->snapNum ) )
-				Com_Printf( S_COLOR_RED"***** SnapShot lost\n" );
-		}
-
-		// the first snap, fill all the timeDeltas with the same value
-		// don't let delta add big jumps to the smoothing ( a stable connection produces jumps inside +-3 range)
-		delta = ( snap->timeStamp - cl.snapFrameTime ) - cls.gametime;
-		if( cl.currentSnapNum <= 0 || delta < cl.newServerTimeDelta - 175 || delta > cl.newServerTimeDelta + 175 )
-		{
-			CL_RestartTimeDeltas( delta );
-		}
-		else
-		{
-			if( cl_debug_timeDelta->integer )
-			{
-				if( delta < cl.newServerTimeDelta - (int)cl.snapFrameTime )
-					Com_Printf( S_COLOR_CYAN"***** timeDelta low clamp\n" );
-				else if( delta > cl.newServerTimeDelta + (int)cl.snapFrameTime )
-					Com_Printf( S_COLOR_CYAN"***** timeDelta high clamp\n" );
-			}
-
-			clamp( delta, cl.newServerTimeDelta - (int)cl.snapFrameTime, cl.newServerTimeDelta + (int)cl.snapFrameTime );
-
-			cl.serverTimeDeltas[cl.receivedSnapNum & MASK_TIMEDELTAS_BACKUP] = delta;
-		}
-	}
-}
-
 //========= StringCommands================
 
 /*
@@ -1102,7 +1032,7 @@ static void CL_CvarInfoRequest_f( void )
 	Q_strncatz( string, "\" ", sizeof( string ) );
 
 	cvarString = Cvar_String( cvarName );
-	if( !cvarString[0] )
+	if( !cvarString )
 		cvarString = "not found";
 
 	if( strlen( string ) + strlen( cvarString ) + 2 /*quotes*/ >= MAX_STRING_CHARS - 1 )

@@ -155,19 +155,14 @@ void G_misc_portal_surface( gentity_t *ent )
 
 void G_misc_portal_camera( gentity_t *ent )
 {
-	float roll;
-	int noents;
-
 	VectorClear( ent->s.local.mins );
 	VectorClear( ent->s.local.maxs );
 	GClip_LinkEntity( ent );
 
-	roll = atof( G_GetEntitySpawnKey( "roll", ent ) );
-	noents = ( atoi( G_GetEntitySpawnKey( "noents", ent ) ) != 0 ) ? 1 : 0;
-
 	ent->netflags = SVF_NOCLIENT;
-	ent->count = (int)( roll / 360.0f * 256.0f );
-	ent->mass = noents;
+	ent->count = (int)( st.roll / 360.0f * 256.0f );
+	if( st.noents )
+		ent->mass = 1;
 }
 
 /*
@@ -178,26 +173,11 @@ QUAKED props_skyportal (.6 .7 .7) (-8 -8 0) (8 8 16)
 */
 void G_skyportal( gentity_t *ent )
 {
-	float fov, scale;
-	int noents;
-
-	fov = atof( G_GetEntitySpawnKey( "fov", ent ) );
-	if( fov <= 0 )
-		fov = 90;
-	if( fov > 180 )
-		fov = 180;
-
-	scale = atof( G_GetEntitySpawnKey( "scale", ent ) );
-	if( scale < 0 )
-		scale = 1.0f;
-
-	noents = ( atoi( G_GetEntitySpawnKey( "noents", ent ) ) != 0 ) ? 1 : 0;
-
 	ent->netflags = SVF_NOCLIENT;
 	ent->s.type = ET_SKYPORTAL;
 	trap_ConfigString( CS_SKYBOX, va( "%.3f %.3f %.3f %.1f %.1f %i %.1f %.1f %.1f", 
 		ent->s.ms.origin[0], ent->s.ms.origin[1], ent->s.ms.origin[2],
-		fov, scale, noents, ent->s.ms.angles[0], ent->s.ms.angles[1], ent->s.ms.angles[2] ) );
-	
-	ent->s.effects |= noents;
+		st.fov, st.scale, st.noents, ent->s.ms.angles[0], ent->s.ms.angles[1], ent->s.ms.angles[2] ) );
+	if( st.noents )
+		ent->s.effects |= 1;
 }

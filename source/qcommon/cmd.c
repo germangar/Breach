@@ -526,8 +526,8 @@ static void Cmd_Exec_f( void )
 		Com_Printf( "Executing: %s\n", name );
 
 	Cbuf_InsertText( "\n" );
-	if( len >= 3 && ((qbyte)f[0] == 0xEF && (qbyte)f[1] == 0xBB && (qbyte)f[2] == 0xBF) )
-		Cbuf_InsertText( f + 3 );	// skip Windows UTF-8 marker
+	if ((qbyte)f[0] == 0xEF && (qbyte)f[1] == 0xBB && (qbyte)f[2] == 0xBF)
+		Cbuf_InsertText( f+3 );	// skip Windows UTF-8 marker
 	else
 		Cbuf_InsertText( f );
 
@@ -752,7 +752,6 @@ typedef struct cmd_function_s
 {
 	char *name;
 	xcommand_t function;
-	xcompletionf_t completion_func;
 } cmd_function_t;
 
 
@@ -916,7 +915,6 @@ void Cmd_AddCommand( const char *cmd_name, xcommand_t function )
 	if( Trie_Find( cmd_function_trie, cmd_name, TRIE_EXACT_MATCH, (void **)&cmd ) == TRIE_OK )
 	{
 		cmd->function = function;
-		cmd->completion_func = NULL;
 		Com_DPrintf( "Cmd_AddCommand: %s already defined\n", cmd_name );
 		return;
 	}
@@ -925,7 +923,6 @@ void Cmd_AddCommand( const char *cmd_name, xcommand_t function )
 	cmd->name = (char *) ( (qbyte *)cmd + sizeof( cmd_function_t ) );
 	strcpy( cmd->name, cmd_name );
 	cmd->function = function;
-	cmd->completion_func = NULL;
 	Trie_Insert( cmd_function_trie, cmd_name, cmd );
 }
 
@@ -965,30 +962,6 @@ qboolean Cmd_Exists( const char *cmd_name )
 }
 
 /*
-============
-Cmd_SetCompletionFunc
-============
- */
-void Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func )
-{
-	cmd_function_t *cmd;
-
-	if( !cmd_name || !cmd_name[0] )
-	{
-		Com_DPrintf( "Cmd_SetCompletionFunc: empty name pass as an argument\n" );
-		return;
-	}
-
-	if( Trie_Find( cmd_function_trie, cmd_name, TRIE_EXACT_MATCH, (void **)&cmd ) == TRIE_OK )
-	{
-		cmd->completion_func = completion_func;
-		return;
-	}
-
-	Com_DPrintf( "Cmd_SetCompletionFunc: %s already does not exist\n", cmd_name );
-}
-
-/*
    ============
    Cmd_VStr_f
    ============
@@ -1003,13 +976,47 @@ static void Cmd_VStr_f( void )
 
 /*
    ============
+   Cmd_CompleteCommand
+   // attempts to match a partial command for automatic command line completion
+   // returns NULL if nothing fits
+   ============
+ */
+char *Cmd_CompleteCommand( const char *partial )
+{
+	size_t len;
+	cmd_alias_t *a;
+	cmd_function_t *cmd;
+
+	assert( partial );
+	len = strlen( partial );
+
+	assert( cmd_function_trie );
+	assert( cmd_alias_trie );
+	if( !len )
+		return NULL;
+	// try exact match
+	else if( Trie_Find( cmd_function_trie, partial, TRIE_EXACT_MATCH, (void **)&cmd ) == TRIE_OK )
+		return cmd->name;
+	else if( Trie_Find( cmd_alias_trie, partial, TRIE_EXACT_MATCH, (void **)&a ) == TRIE_OK )
+		return a->name;
+	// try partial match
+	else if( Trie_Find( cmd_function_trie, partial, TRIE_PREFIX_MATCH, (void **)&cmd ) == TRIE_OK )
+		return cmd->name;
+	else if( Trie_Find( cmd_alias_trie, partial, TRIE_PREFIX_MATCH, (void **)&a ) == TRIE_OK )
+		return a->name;
+	else
+		return NULL;
+}
+
+/*
+   ============
    Cmd_CompleteCountPossible
    ============
  */
 int Cmd_CompleteCountPossible( const char *partial )
 {
 	assert( partial );
-	if( !partial[0] )
+	if( !strlen( partial ) )
 		return 0;
 	else
 	{
@@ -1042,33 +1049,6 @@ char **Cmd_CompleteBuildList( const char *partial )
 	buf[dump->size] = NULL;
 	Trie_FreeDump( dump );
 	return buf;
-}
-
-/*
-============
-Cmd_CompleteBuildArgList
-
-Find a possible single matching command 
-============
- */
-char **Cmd_CompleteBuildArgList( const char *partial )
-{
-	const char *p;
-	
-	p = strstr( partial, " " );
-	if( p )
-	{
-		cmd_function_t *cmd;
-
-		Cmd_TokenizeString( partial );
-		if( Trie_Find( cmd_function_trie, cmd_argv[0], TRIE_EXACT_MATCH, (void **)&cmd ) == TRIE_OK )
-		{
-			if( cmd->completion_func )
-				return cmd->completion_func( cmd_args );
-		}
-	}
-
-	return NULL;
 }
 
 /*
@@ -1172,7 +1152,6 @@ void Cmd_ExecuteString( const char *text )
 		// check alias
 		if( ++alias_count == ALIAS_LOOP_COUNT )
 		{
-			alias_count = 0;
 			Com_Printf( "ALIAS_LOOP_COUNT\n" );
 			return;
 		}

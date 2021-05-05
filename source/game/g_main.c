@@ -5,6 +5,7 @@
 
 game_locals_t game;
 level_locals_t level;
+spawn_temp_t st;
 
 struct gentity_s *worldEntity;
 

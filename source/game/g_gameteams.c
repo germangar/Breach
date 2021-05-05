@@ -59,16 +59,16 @@ qboolean G_Teams_JoinTeam( gentity_t *ent, int team )
 		default:
 			GS_Printf( "WARNING: G_Teams_JoinTeamTeam got an unknown error code\n" );
 		case ER_TEAM_UNKNOWN:
-			G_PrintMsg( ent->client, "Unknown team name\n" );
+			G_PrintMsg( ent, "Unknown team name\n" );
 			break;
 		case ER_TEAM_INVALID:
-			G_PrintMsg( ent->client, "Team %s is not a valid option\n", GS_TeamName( team ) );
+			G_PrintMsg( ent, "Team %s is not a valid option\n", GS_TeamName( team ) );
 			break;
 		case ER_TEAM_FULL:
-			G_PrintMsg( ent->client, "Team %s is FULL\n", GS_TeamName( team ) );
+			G_PrintMsg( ent, "Team %s is FULL\n", GS_TeamName( team ) );
 			break;
 		case ER_TEAM_CURRENT:
-			G_PrintMsg( ent->client, "Team %s is your current team\n", GS_TeamName( team ) );
+			G_PrintMsg( ent, "Team %s is your current team\n", GS_TeamName( team ) );
 			break;
 		}
 
@@ -212,7 +212,7 @@ void G_Say_Team( gentity_t *who, char *msg, qboolean checkflood )
 
 		if( cl_ent->s.team == who->s.team )
 		{
-			G_ChatMsg( cl_ent->client, "%s[TEAM]%s %s%s: %s\n", S_COLOR_YELLOW, S_COLOR_WHITE, who->client->netname,
+			G_ChatMsg( cl_ent, "%s[TEAM]%s %s%s: %s\n", S_COLOR_YELLOW, S_COLOR_WHITE, who->client->netname,
 			           S_COLOR_YELLOW, outmsg );
 		}
 	}

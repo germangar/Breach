@@ -215,7 +215,7 @@ static void Com_LoadGameLibraryManifest( const char *libname, char *manifest )
 */
 void *Com_LoadGameLibrary( const char *basename, const char *apifuncname, void **handle, void *parms, void *( *builtinAPIfunc )(void *), qboolean pure, char *manifest )
 {
-	static int randomizer = 0; // random part of tempmodules dir, always the same on launch
+	static int randomizer = 0; // random part of tempmodules dir, always the same for one launch of Warsow
 	char *tempname, *libname;
 	int tempname_size, libname_size;
 	void *( *APIfunc )(void *);

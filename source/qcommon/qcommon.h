@@ -254,7 +254,6 @@ void        Cbuf_Execute( void );
  */
 
 typedef void ( *xcommand_t )( void );
-typedef char ** ( *xcompletionf_t )( const char *partial );
 
 void        Cmd_PreInit( void );
 void        Cmd_Init( void );
@@ -262,19 +261,19 @@ void		Cmd_Shutdown( void );
 void        Cmd_AddCommand( const char *cmd_name, xcommand_t function );
 void        Cmd_RemoveCommand( const char *cmd_name );
 qboolean    Cmd_Exists( const char *cmd_name );
+char *Cmd_CompleteCommand( const char *partial );
 void        Cmd_WriteAliases( int file );
-int			Cmd_CompleteAliasCountPossible( const char *partial );
-char		**Cmd_CompleteAliasBuildList( const char *partial );
-int			Cmd_CompleteCountPossible( const char *partial );
-char		**Cmd_CompleteBuildList( const char *partial );
-char		**Cmd_CompleteBuildArgList( const char *partial );
-int			Cmd_Argc( void );
-char		*Cmd_Argv( int arg );
-char		*Cmd_Args( void );
+int	    Cmd_CompleteAliasCountPossible( const char *partial );
+char **Cmd_CompleteAliasBuildList( const char *partial );
+int	    Cmd_CompleteCountPossible( const char *partial );
+char **Cmd_CompleteBuildList( const char *partial );
+char *Cmd_CompleteAlias( const char *partial );
+int	    Cmd_Argc( void );
+char *Cmd_Argv( int arg );
+char *Cmd_Args( void );
 void        Cmd_TokenizeString( const char *text );
 void        Cmd_ExecuteString( const char *text );
 void        Cmd_ForwardToServer( void );
-void		Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func );
 
 /*
    ==============================================================
@@ -848,6 +847,4 @@ qboolean ML_FilenameExists( const char *filename );
 
 qboolean ML_ValidateFilename( const char *filename );
 qboolean ML_ValidateFullname( const char *fullname );
-
-char **ML_CompleteBuildList( const char *partial );
 

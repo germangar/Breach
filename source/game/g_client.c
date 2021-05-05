@@ -83,9 +83,6 @@ void G_ClientDisconnect( int clientNum )
 
 	ent = &game.entities[clientNum];
 
-	if( !ent->client || !ent->s.local.inuse )
-		return;
-
 	// clear up the old data
 	memset( ent->client, 0, sizeof( gclient_t ) );
 	G_InitEntity( ent );
@@ -94,39 +91,6 @@ void G_ClientDisconnect( int clientNum )
 
 	// let the client know it is free
 	trap_ConfigString( CS_PLAYERINFOS + clientNum, "" );
-}
-
-/*
-* G_ClientUpdateInfoString
-*/
-void G_ClientUpdateInfoString( gclient_t *client )
-{
-	char cstring[MAX_INFO_STRING];
-
-	if( !client )
-		return;
-
-	memset( cstring, 0, sizeof( cstring ) );
-
-	if( trap_GetClientState( CLIENTNUM( client ) ) != CS_FREE )
-	{
-		if( !Info_SetValueForKey( cstring, "name", client->netname ) )
-			GS_Printf( "WARNING: G_ClientUpdateInfoString: Client %s. Not space enough for key 'name'\n", client->netname );
-
-		if( !Info_SetValueForKey( cstring, "hand", va( "%i", client->hand ) ) )
-			GS_Printf( "WARNING: G_ClientUpdateInfoString: Client %s. Not space enough for key 'hand'\n", client->netname );
-
-		if( !Info_SetValueForKey( cstring, "fov", va( "%i", client->fov ) ) )
-			GS_Printf( "WARNING: G_ClientUpdateInfoString: Client %s. Not space enough for key 'fov'\n", client->netname );
-
-		if( !Info_SetValueForKey( cstring, "zfov", va( "%i", client->zoomfov ) ) )
-			GS_Printf( "WARNING: G_ClientUpdateInfoString: Client %s. Not space enough for key 'zfov'\n", client->netname );
-
-		if( !Info_SetValueForKey( cstring, "color", va( "%i %i %i", client->color[0], client->color[1], client->color[2] ) ) )
-			GS_Printf( "WARNING: G_ClientUpdateInfoString: Client %s. Not space enough for key 'color'\n", client->netname );
-	}
-
-	trap_ConfigString( CS_PLAYERINFOS + CLIENTNUM( client ), cstring );
 }
 
 /*
@@ -153,8 +117,6 @@ void G_ClientBegin( int clientNum )
 	// remove player class
 	ent->client->playerClassIndex = 0;
 
-	G_ClientUpdateInfoString( ent->client );
-
 	// keep him temporary as ghost and add him to spawn queue
 	G_Client_Respawn( ent, qtrue );
 	G_SpawnQueue_AddClient( ent );
@@ -166,6 +128,7 @@ void G_ClientBegin( int clientNum )
 */
 void G_ClientUserinfoChanged( int clientNum, char *userinfo )
 {
+	char cstring[MAX_INFO_STRING];
 	char *key;
 	gentity_t *ent;
 	int rgbcolor;
@@ -210,7 +173,7 @@ void G_ClientUserinfoChanged( int clientNum, char *userinfo )
 	rgbcolor = COM_ReadColorRGBString( Info_ValueForKey( userinfo, "color" ) );
 	if( rgbcolor == -1 )
 	{
-		G_PrintMsg( ent->client, "Warning: Bad 'color' cvar values. Using white\n" );
+		G_PrintMsg( ent, "Warning: Bad 'color' cvar values. Using white\n" );
 		rgbcolor = COLOR_RGB( 255, 255, 255 );
 	}
 	Vector4Set( client->color, COLOR_R( rgbcolor ), COLOR_G( rgbcolor ), COLOR_B( rgbcolor ), 255 );
@@ -236,7 +199,20 @@ void G_ClientUserinfoChanged( int clientNum, char *userinfo )
 	clamp( client->zoomfov, 1, 90 );
 
 	// update the client with the new info
-	G_ClientUpdateInfoString( client );
+	memset( cstring, 0, sizeof( cstring ) );
+	Info_SetValueForKey( cstring, "name", client->netname );
+	Info_SetValueForKey( cstring, "hand", va( "%i", client->hand ) );
+	Info_SetValueForKey( cstring, "fov", va( "%i", client->fov ) );
+	Info_SetValueForKey( cstring, "zfov", va( "%i", client->zoomfov ) );
+	Info_SetValueForKey( cstring, "color", va( "%i %i %i", client->color[0], client->color[1], client->color[2] ) );
+	
+	if( strlen( cstring ) >= MAX_CONFIGSTRING_CHARS - 1 )
+	{
+		GS_Printf( "WARNING: G_ClientUserinfoChanged :InfoString overflow\n" );
+		cstring[MAX_CONFIGSTRING_CHARS-1] = 0;
+	}
+
+	trap_ConfigString( CS_PLAYERINFOS + clientNum, cstring );
 
 	// these are managed in the server and no need of updating into the client
 
@@ -325,8 +301,6 @@ static void G_Client_Spawn( gentity_t *ent, vec3_t spawn_origin, vec3_t spawn_an
 	{  // spawn a player model
 		G_et_player_spawn( ent, spawn_origin, spawn_angles, NULL );
 	}
-
-	ent->classname = "client";
 
 	// both ghosts and active players
 	ent->health = ent->maxHealth = playerClass->maxHealth;

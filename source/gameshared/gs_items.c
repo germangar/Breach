@@ -249,9 +249,7 @@ gsitem_t *GS_Cmd_UseItem( entity_state_t *state, player_state_t *playerState, ch
 	// we don't have this item in the inventory
 	if( playerState->inventory[item->inventorySlot][ITAG] != item->tag )
 	{
-		if( module.type == GS_MODULE_CGAME && !( item->type & IT_WEAPON ) ) 
-			GS_Printf( "Item %s is not in inventory\n", item->name );
-
+		if( module.type == GS_MODULE_CGAME ) GS_Printf( "Item %s is not in inventory\n", item->name );
 		return NULL;
 	}
 

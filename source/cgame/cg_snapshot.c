@@ -24,7 +24,6 @@ void CG_NewSnapLinkEntityState( const entity_state_t *state )
 	cent->renderfx = 0;
 	cent->effects = state->effects;
 	cent->type = state->type;
-	VectorClear( cent->avelocity );
 
 	// event entities don't need processing
 	if( ISEVENTENTITY( state ) )
@@ -62,9 +61,6 @@ void CG_NewSnapLinkEntityState( const entity_state_t *state )
 	cent->canExtrapolate = ( cent->current.ms.linearProjectileTimeStamp == 0 ) ? qtrue : qfalse;
 	cent->stopped = qfalse;
 
-	if( cent->current.cmodeltype == CMODEL_BRUSH )
-		cent->canExtrapolate = qfalse;
-
 	// FIXME: local should not be inside state
 	memset( &cent->current.local, 0, sizeof( cent->current.local ) );
 
@@ -72,35 +68,39 @@ void CG_NewSnapLinkEntityState( const entity_state_t *state )
 	//	return;
 
 	// update its local bounding box
-	if( cent->current.solid )
+	if( state->solid && ( state->cmodeltype == CMODEL_BRUSH ) && state->modelindex1 )
 	{
-		if( cent->current.cmodeltype == CMODEL_BRUSH )
-		{
-			if( cent->current.modelindex1 )
-			{
-				struct cmodel_s	*cmodel = trap_CM_InlineModel( cent->current.modelindex1 );
-				trap_CM_InlineModelBounds( cmodel, cent->current.local.mins, cent->current.local.maxs );
-			}
-		}
-		else if( cent->current.cmodeltype != CMODEL_NOT )
-		{
-			GS_DecodeEntityBBox( cent->current.bbox, cent->current.local.mins, cent->current.local.maxs );
-		}
+		struct cmodel_s	*cmodel = trap_CM_InlineModel( cent->current.modelindex1 );
+		trap_CM_InlineModelBounds( cmodel, cent->current.local.mins, cent->current.local.maxs );
+		cent->renderfx = RF_NOSHADOW;
+	}
+	else if( state->solid && ( state->cmodeltype != CMODEL_NOT ) && ( state->cmodeltype != CMODEL_BRUSH ) )
+	{
+		GS_DecodeEntityBBox( cent->current.bbox, cent->current.local.mins, cent->current.local.maxs );
 	}
 
 	// update velocities
 	if( cent->noOldState )
 	{
+		VectorClear( cent->avelocity );
+
+		// if there is no old frame, but it has velocity, move old origin backwards
+		//if( !state->ms.linearProjectileTimeStamp && VectorLengthFast( state->ms.velocity ) )
+		//	VectorMA( cent->current.ms.origin, -( cg.snap.frameTime * 0.001f ), cent->current.ms.velocity, cent->prev.ms.origin );
 	}
 	else
 	{
 		int i;
+		vec3_t adelta;
+		float filterStrength = 0.35f;
 
 		// rotational velocity
 		for( i = 0; i < 3; i++ )
-			cent->avelocity[i] = AngleDelta( cent->current.ms.angles[i], cent->prev.ms.angles[i] );
-
-		VectorScale( cent->avelocity, 1000.0f/cg.snap.frameTime, cent->avelocity );
+		{
+			adelta[i] = AngleDelta( cent->current.ms.angles[i], cent->prev.ms.angles[i] );
+			//clamp( adelta, -35, 35 );
+			cent->avelocity[i] = ( cent->avelocity[i] * filterStrength ) + ( adelta[i] * ( 1.0f - filterStrength ) );
+		}
 
 		// if it moved too much force the teleported bit
 		if(  abs( cent->current.ms.origin[0] - cent->prev.ms.origin[0] ) > 512
@@ -160,10 +160,10 @@ void CG_NewSnapshot( unsigned int snapNum, unsigned int serverTime )
 	else
 		cg.snap.frameTime = ( cg.frame.timeStamp - cg.oldFrame.timeStamp );
 
-	if( !cg.snap.frameTime )
-		cg.snap.frameTime = cgs.snapFrameTime;
-
-	CG_RefreshTimeFracs();
+	if( cg.oldFrame.timeStamp == cg.frame.timeStamp )
+		cg.lerpfrac = 1.0f;
+	else
+		cg.lerpfrac = (double)( cg.time - cg.oldFrame.timeStamp ) / (double)( cg.frame.timeStamp - cg.oldFrame.timeStamp );
 
 	// update local gameState
 	gs.gameState = *trap_GetGameStateFromSnapsBackup( cg.frame.snapNum );

@@ -346,7 +346,7 @@ static void CL_ParsePacketEntities( msg_t *msg, snapshot_t *snap )
 //=================
 //CL_ParseSnapshot
 //=================
-snapshot_t *CL_ParseSnapshot( msg_t *msg )
+static snapshot_t *CL_ParseSnapshot( msg_t *msg )
 {
 	int cmd, len;
 	snapshot_t *snap;
@@ -417,3 +417,70 @@ snapshot_t *CL_ParseSnapshot( msg_t *msg )
 	return snap;
 }
 
+//=================
+//CL_ParseFrame - Parses the frame and stores the data in snap backups, but doesn't fire the new snap
+//=================
+void CL_ParseFrame( msg_t *msg )
+{
+	snapshot_t *snap;
+
+	snap = CL_ParseSnapshot( msg );
+
+	if( snap->valid )
+	{
+		cl.receivedSnapNum = snap->snapNum;
+
+		if( cls.demo.recording )
+			cls.demo.duration = snap->timeStamp - cls.demo.basetime;
+
+#ifdef SMOOTHSERVERTIME
+		if( !cls.demo.playing )
+		{
+			// the first snap, fill all the timeDeltas with the same value
+			if( cl.currentSnapNum <= 0 || ( cl.serverTime + 250 < snap->timeStamp ) )
+			{
+				int i;
+
+				cl.serverTimeDelta = cl.newServerTimeDelta = snap->timeStamp - cls.gametime - 1;
+				for( i = 0; i < MAX_TIMEDELTAS_BACKUP; i++ )
+					cl.serverTimeDeltas[i] = cl.newServerTimeDelta;
+
+				if( cl_debug_timeDelta->integer )
+					Com_Printf( S_COLOR_CYAN"***** timeDelta restarted\n" );
+			}
+			else
+			{
+				int delta;
+
+				// don't let delta add big jumps to the smoothing ( a stable connection produces jumps inside +-3 range)
+				delta = ( snap->timeStamp - cl.snapFrameTime ) - cls.gametime;
+				if( delta < cl.serverTimeDelta - 150 || delta > cl.serverTimeDelta + 150 )
+				{
+					int i;
+
+					cl.serverTimeDelta = cl.newServerTimeDelta = delta;
+					for( i = 0; i < MAX_TIMEDELTAS_BACKUP; i++ )
+						cl.serverTimeDeltas[i] = delta;
+
+					if( cl_debug_timeDelta->integer )
+						Com_Printf( S_COLOR_CYAN"***** timeDelta jumped\n" );
+				}
+				else
+				{
+					if( cl_debug_timeDelta->integer )
+					{
+						if( delta < cl.serverTimeDelta - (int)cl.snapFrameTime )
+							Com_Printf( S_COLOR_CYAN"***** timeDelta low clamp\n" );
+						else if( delta > cl.serverTimeDelta + (int)cl.snapFrameTime )
+							Com_Printf( S_COLOR_CYAN"***** timeDelta high clamp\n" );
+					}
+
+					clamp( delta, cl.serverTimeDelta - (int)cl.snapFrameTime, cl.serverTimeDelta + (int)cl.snapFrameTime );
+
+					cl.serverTimeDeltas[cl.receivedSnapNum & MASK_TIMEDELTAS_BACKUP] = delta;
+				}
+			}
+		}
+#endif
+	}
+}

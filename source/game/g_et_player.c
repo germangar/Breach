@@ -22,7 +22,7 @@ static void G_et_player_die( gentity_t *ent, gentity_t *inflictor, gentity_t *at
 //=================
 //G_et_player_die
 //=================
-static void G_et_player_pain( gentity_t *ent, gentity_t *other, float kick, float damage )
+static void G_et_player_pain( gentity_t *ent, gentity_t *other, float kick, int damage )
 {
 }
 

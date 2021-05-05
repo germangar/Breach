@@ -13,8 +13,7 @@
 
 // pretty solid
 #define CGAMEGETLIGHTORIGIN
-
-//#define CM_LEGACYBSP
+#define SMOOTHSERVERTIME
 
 // collision options
 #define CM_ALLOW_ROTATED_BBOXES

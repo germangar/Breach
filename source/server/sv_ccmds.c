@@ -272,7 +272,6 @@ void SV_AutoUpdateFromWeb( qboolean checkOnly )
 	const char *token, *ptr;
 	char path[MAX_QPATH];
 	int downloadCount = 0, downloadFailed = 0;
-	char newVersionTag[MAX_QPATH];
 	qboolean newVersion = qfalse;
 
 	if( !dedicated->integer )
@@ -324,8 +323,7 @@ void SV_AutoUpdateFromWeb( qboolean checkOnly )
 		goto cancel;
 
 	// compare versions
-	Q_strncpyz( newVersionTag, token, sizeof( newVersionTag ) );
-	if( atof( newVersionTag ) > atof( va( "%4.3f", APP_VERSION ) ) )
+	if( atof( token ) > atof( va( "%4.3f", APP_VERSION ) ) )
 		newVersion = qtrue;
 
 	while( ptr )
@@ -406,7 +404,7 @@ done:
 				Com_Printf( "This version of "APPLICATION" was updated successfully\n\n" );
 		}
 
-		Com_Printf( "****** Version %s of "APPLICATION" is available. ******\n", newVersionTag );
+		Com_Printf( "****** New version of "APPLICATION" is available. ******\n" );
 		Com_Printf( "****** Please download the new version at "APP_URL" ******\n" );
 	}
 	else if( downloadCount )
@@ -656,14 +654,6 @@ static void SV_Kick_f( void )
 	client->lastPacketReceivedTime = svs.realtime; // min case there is a funny zombie
 }
 
-/*
-* SV_MapComplete_f
-*/
-static char **SV_MapComplete_f( const char *partial )
-{
-	return ML_CompleteBuildList( partial );
-}
-
 //================
 //SV_Status_f
 //================
@@ -858,8 +848,4 @@ void SV_InitOperatorCommands( void )
 
 	Cmd_AddCommand( "purelist", SV_PureList_f );
 	Cmd_AddCommand( "cvarcheck", SV_CvarCheck_f );
-
-	Cmd_SetCompletionFunc( "map", SV_MapComplete_f );
-	Cmd_SetCompletionFunc( "devmap", SV_MapComplete_f );
-	Cmd_SetCompletionFunc( "gamemap", SV_MapComplete_f );
 }

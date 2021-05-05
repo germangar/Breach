@@ -23,10 +23,6 @@
 #include "md5.h"
 #include "glob.h"
 
-#ifdef WSWCURL
-#include "wswcurl.h"
-#endif
-
 #define MAX_NUM_ARGVS	50
 
 qboolean com_initialized;
@@ -342,7 +338,9 @@ void Com_Error( int code, const char *format, ... )
 {
 	va_list	argptr;
 	static char msg[MAX_PRINTMSG];
-	static qboolean	recursive = qfalse;
+	static qboolean	recursive;
+
+	recursive = qfalse;
 
 	if( recursive )
 	{
@@ -1306,10 +1304,6 @@ void Qcommon_Frame( unsigned int realmsec )
 		c_pointcontents = 0;
 	}
 
-#ifdef WSWCURL
-	wswcurl_perform();
-#endif
-
 	FS_Frame();
 
 	if( dedicated->integer )
@@ -1386,9 +1380,6 @@ void Qcommon_Shutdown( void )
 	Memory_ShutdownCommands();
 
 	FS_Shutdown();
-#ifdef WSWCURL
-	wswcurl_cleanup();
-#endif
 	Cmd_Shutdown();
 	Cbuf_Shutdown();
 	Memory_Shutdown();
