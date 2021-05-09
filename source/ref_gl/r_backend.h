@@ -52,8 +52,7 @@ extern vec4_t *normalsArray;
 extern vec4_t *sVectorsArray;
 extern vec2_t *coordsArray;
 extern vec2_t *lightmapCoordsArray[MAX_LIGHTMAPS];
-extern byte_vec4_t *colorArray;
-extern byte_vec4_t colorArrayCopy[MAX_ARRAY_VERTS];
+extern byte_vec4_t colorArray[MAX_ARRAY_VERTS];
 
 extern int r_numVertexBufferObjects;
 extern GLuint r_vertexBufferObjects[MAX_VERTEX_BUFFER_OBJECTS];
@@ -99,10 +98,10 @@ static inline qboolean R_MeshOverflow( const mesh_t *mesh )
 		r_backacc.numElems + mesh->numElems > MAX_ARRAY_ELEMENTS );
 }
 
-static inline qboolean R_MeshOverflow2( const meshbuffer_t *mb, const meshbuffer_t *nextmb )
+static inline qboolean R_MeshOverflow2( const mesh_t *mesh1, const mesh_t *mesh2 )
 {
-	return ( r_backacc.numVerts + mb->numVertexes + nextmb->numVertexes > MAX_ARRAY_VERTS ||
-		r_backacc.numElems + mb->numElems + nextmb->numElems > MAX_ARRAY_ELEMENTS );
+	return ( r_backacc.numVerts + mesh1->numVertexes + mesh2->numVertexes > MAX_ARRAY_VERTS ||
+		r_backacc.numElems + mesh1->numElems + mesh2->numElems > MAX_ARRAY_ELEMENTS );
 }
 
 static inline qboolean R_InvalidMesh( const mesh_t *mesh )

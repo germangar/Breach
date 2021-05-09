@@ -1555,7 +1555,7 @@ qboolean R_CullSkeletalModel( entity_t *e )
 
 		if( shader && ( shader->sort <= SHADER_SORT_ALPHATEST ) )
 		{
-			mb = R_AddMeshToList( MB_MODEL, NULL, R_PlanarShadowShader(), -( i+1 ), NULL, 0, 0 );
+			mb = R_AddMeshToList( MB_MODEL, NULL, R_PlanarShadowShader(), -( i+1 ) );
 			if( mb )
 				mb->LODModelHandle = modhandle;
 		}

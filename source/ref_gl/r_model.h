@@ -60,7 +60,6 @@ typedef struct
 {
 	unsigned int	visframe;			// should be drawn when node is crossed
 	unsigned int	facetype, flags;
-	unsigned short	numVertexes, numElems;
 
 	shader_t		*shader;
 	mesh_t			*mesh;

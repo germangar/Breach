@@ -422,9 +422,8 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out )
 	qbyte *buffer;
 	size_t bufSize;
 
-	if( ( mapConfig.deluxeMappingEnabled 
-			&& ( !(LittleLong( in->lm_texnum[0] ) < 0 || in->lightmapStyles[0] == 255) || (out->shader->flags & SHADER_MATERIAL) ) )
-		|| ( out->shader->flags & SHADER_PORTAL_CAPTURE2 ) )
+	if( ( mapConfig.deluxeMappingEnabled && !(LittleLong( in->lm_texnum[0] ) < 0 || in->lightmapStyles[0] == 255) ) ||
+		( out->shader->flags & SHADER_PORTAL_CAPTURE2 ) )
 	{
 		createSTverts = qtrue;
 	}

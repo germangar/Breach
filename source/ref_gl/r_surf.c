@@ -173,8 +173,7 @@ static meshbuffer_t *R_AddSurfaceToList( msurface_t *surf, unsigned int clipflag
 		qboolean vis = R_AddSkySurface( surf );
 		if( vis )
 		{
-			R_AddMeshToList( MB_MODEL, surf->fog, shader, surf - r_worldbrushmodel->surfaces + 1, 
-				surf->mesh, surf->numVertexes, surf->numElems );
+			R_AddMeshToList( MB_MODEL, surf->fog, shader, surf - r_worldbrushmodel->surfaces + 1 );
 			ri.params &= ~RP_NOSKY;
 		}
 		return NULL;
@@ -189,14 +188,8 @@ static meshbuffer_t *R_AddSurfaceToList( msurface_t *surf, unsigned int clipflag
 	}
 
 	c_brush_polys++;
-
 	mb = R_AddMeshToList( surf->facetype == FACETYPE_FLARE ? MB_SPRITE : MB_MODEL,
-		surf->fog, shader, surf - r_worldbrushmodel->surfaces + 1,
-		surf->mesh, surf->numVertexes, surf->numElems );
-
-	if( mb )
-		mb->sortkey |= ( ( surf->superLightStyle+1 ) << 10 );
-
+		surf->fog, shader, surf - r_worldbrushmodel->surfaces + 1 );
 	ri.meshlist->surfmbuffers[surf - r_worldbrushmodel->surfaces] = mb;
 	return mb;
 }
@@ -268,6 +261,7 @@ void R_AddBrushModelToList( entity_t *e )
 		mb = R_AddSurfaceToList( psurf, 0 );
 		if( mb )
 		{
+			mb->sortkey |= ( ( psurf->superLightStyle+1 ) << 10 );
 			if( R_SurfPotentiallyLit( psurf ) )
 				mb->dlightbits = dlightbits;
 		}
@@ -303,14 +297,12 @@ static void R_MarkLeafSurfaces( msurface_t **mark, unsigned int clipflags, unsig
 		{
 			surf->visframe = r_framecount;
 			mb = R_AddSurfaceToList( surf, clipflags );
-		}
-		else if( dlightbits )
-		{
-			mb = ri.meshlist->surfmbuffers[surf - r_worldbrushmodel->surfaces];
+			if( mb )
+				mb->sortkey |= ( ( surf->superLightStyle+1 ) << 10 );
 		}
 		else
 		{
-			continue;
+			mb = ri.meshlist->surfmbuffers[surf - r_worldbrushmodel->surfaces];
 		}
 
 		newDlightbits = mb ? dlightbits & ~mb->dlightbits : 0;
@@ -569,6 +561,9 @@ void R_DrawWorld( void )
 		ri.currententity->outlineHeight = 0;
 	Vector4Copy( mapConfig.outlineColor, ri.currententity->outlineColor );
 #endif
+
+	if( (ri.params & RP_CLIPPLANE) && !(ri.params & RP_NONVIEWERREF) )
+		Com_Printf( "WTF\n" );
 
 	if( !( ri.params & RP_SHADOWMAPVIEW ) )
 	{

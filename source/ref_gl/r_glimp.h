@@ -169,12 +169,11 @@ typedef struct
 
 	qboolean		allowCDS;
 
-	int				maxTextureSize
-					,maxTextureUnits
-					,maxTextureCubemapSize
-					,maxTextureSize3D
-					,maxTextureFilterAnisotropic
-					,maxVaryingFloats;
+	int			maxTextureSize
+				,maxTextureUnits
+				,maxTextureCubemapSize
+				,maxTextureSize3D
+				,maxTextureFilterAnisotropic;
 
 	glextinfo_t ext;
 } glconfig_t;

@@ -66,7 +66,6 @@ static qboolean	r_shaderHasDlightPass;
 static qboolean	r_shaderHasDistanceRamp;
 static qboolean r_shaderHasLightmapPass;
 static qboolean r_shaderPolygonOffset;
-static qboolean r_shaderDiffuseLighting;
 
 static image_t	*r_defaultImage;
 
@@ -797,15 +796,8 @@ static void Shader_NoModulativeDlights( shader_t *shader, shaderpass_t *pass, co
 static void Shader_OffsetMappingScale( shader_t *shader, shaderpass_t *pass, const char **ptr )
 {
 	shader->offsetmapping_scale = Shader_ParseFloat( ptr );
-	if( shader->offsetmapping_scale <= 0 )
+	if( shader->offsetmapping_scale < 0 )
 		shader->offsetmapping_scale = 0;
-}
-
-static void Shader_GlossExponent( shader_t *shader, shaderpass_t *pass, const char **ptr )
-{
-	shader->gloss_exponent = Shader_ParseFloat( ptr );
-	if( shader->gloss_exponent <= 0 )
-		shader->gloss_exponent = 0;
 }
 
 static void Shader_NoDepthTest( shader_t *shader, shaderpass_t *pass, const char **ptr )
@@ -947,7 +939,6 @@ static const shaderkey_t shaderkeys[] =
 	{ "endif", Shader_Endif },
 	{ "nomodulativedlights", Shader_NoModulativeDlights },
 	{ "offsetmappingscale", Shader_OffsetMappingScale },
-	{ "glossexponent", Shader_GlossExponent },
 	{ "nodepthtest", Shader_NoDepthTest },
 	{ "template", Shader_Template },
 	{ "skip", Shader_Skip },
@@ -1265,8 +1256,6 @@ static void Shaderpass_Material( shader_t *shader, shaderpass_t *pass, const cha
 
 	pass->tcgen = TC_GEN_BASE;
 	pass->flags &= ~( SHADERPASS_LIGHTMAP|SHADERPASS_DLIGHT|SHADERPASS_PORTALMAP );
-	if( pass->rgbgen.type == RGB_GEN_UNKNOWN )
-		pass->rgbgen.type = RGB_GEN_IDENTITY;
 	flags &= ~(IT_NOALPHA|IT_NORGB);
 
 	while( 1 )
@@ -1447,10 +1436,7 @@ static void Shaderpass_RGBGen( shader_t *shader, shaderpass_t *pass, const char 
 	else if( !strcmp( token, "oneminusvertex" ) )
 		pass->rgbgen.type = RGB_GEN_ONE_MINUS_VERTEX;
 	else if( !strcmp( token, "lightingdiffuse" ) )
-	{
 		pass->rgbgen.type = RGB_GEN_LIGHTING_DIFFUSE;
-		r_shaderDiffuseLighting = qtrue;
-	}
 	else if( !strcmp( token, "lightingdiffuseonly" ) )
 		pass->rgbgen.type = RGB_GEN_LIGHTING_DIFFUSE_ONLY;
 	else if( !strcmp( token, "lightingambientonly" ) )
@@ -2197,7 +2183,7 @@ void Shader_SetFeatures( shader_t *s )
 		s->features |= MF_NOCULL;
 	if( s->flags & (SHADER_PORTAL_CAPTURE|SHADER_PORTAL_CAPTURE2) )
 		s->features |= MF_NONBATCHED;
-	if( r_shaderHasDistanceRamp || r_shaderDiffuseLighting )
+	if( r_shaderHasDistanceRamp )
 		s->features |= MF_NONBATCHED;
 	if( r_shaderPolygonOffset )
 		s->features |= MF_POLYGONOFFSET;
@@ -2227,8 +2213,6 @@ void Shader_SetFeatures( shader_t *s )
 		switch( pass->rgbgen.type )
 		{
 		case RGB_GEN_LIGHTING_DIFFUSE:
-			if( pass->program && ( pass->program_type == PROGRAM_TYPE_MATERIAL ) )
-				s->features = (s->features | MF_COLORS) & ~MF_LMCOORDS;
 			s->features |= MF_NORMALS;
 			break;
 		case RGB_GEN_VERTEX:
@@ -2310,18 +2294,16 @@ static void Shader_Finish( int defaultType, shader_t *s )
 		{
 			blendmask = pass->flags & ( GLSTATE_SRCBLEND_MASK|GLSTATE_DSTBLEND_MASK );
 
-			if( !blendmask || blendmask == (GLSTATE_SRCBLEND_DST_COLOR|GLSTATE_DSTBLEND_ZERO) || s->numpasses == 1 )
+			if( !blendmask || blendmask == (GLSTATE_SRCBLEND_DST_COLOR|GLSTATE_DSTBLEND_ZERO) )
 			{
 				if( r_lighting_vertexlight->integer )
 				{
 					if( pass->rgbgen.type == RGB_GEN_IDENTITY || pass->rgbgen.type == RGB_GEN_IDENTITY_LIGHTING )
 						pass->rgbgen.type = RGB_GEN_VERTEX;
-					//if( pass->alphagen.type == ALPHA_GEN_IDENTITY )
-					//	pass->alphagen.type = ALPHA_GEN_VERTEX;
+					if( pass->alphagen.type == ALPHA_GEN_IDENTITY )
+						pass->alphagen.type = ALPHA_GEN_VERTEX;
 
-					pass->flags &= ~SHADERPASS_NOCOLORARRAY;
-					if( !(pass->flags & GLSTATE_ALPHAFUNC) )
-						pass->flags &= ~blendmask;
+					pass->flags &= ~(blendmask | SHADERPASS_NOCOLORARRAY);
 				}
 				else
 				{
@@ -2619,7 +2601,6 @@ shader_t *R_LoadShader( const char *name, int type, qboolean forceDefault, int a
 	r_shaderHasDistanceRamp = qfalse;
 	r_shaderPolygonOffset = qfalse;
 	r_shaderHasLightmapPass = qfalse;
-	r_shaderDiffuseLighting = qfalse;
 	if( !r_defaultImage )
 		r_defaultImage = r_notexture;
 
@@ -2672,67 +2653,38 @@ shader_t *R_LoadShader( const char *name, int type, qboolean forceDefault, int a
 		switch( type )
 		{
 		case SHADER_BSP_VERTEX:
-			if( 0 && mapConfig.deluxeMappingEnabled
-				&& Shaderpass_LoadMaterial( &materialImages[0], &materialImages[1], &materialImages[2], shortname, addFlags, 1 ) )
-			{
-				s->type = SHADER_BSP_VERTEX;
-				s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT|(r_lighting_additivedlights->integer ? SHADER_NO_MODULATIVE_DLIGHTS : 0)|SHADER_MATERIAL;
-				s->features = MF_STCOORDS|MF_NORMALS|MF_SVECTORS|MF_ENABLENORMALS|MF_COLORS;
-				s->sort = SHADER_SORT_OPAQUE;
-				s->numpasses = 1;
-				s->name = Shader_Malloc( length + 1 + sizeof( shaderpass_t ) * s->numpasses );
-				strcpy( s->name, shortname );
-				s->passes = ( shaderpass_t * )( ( qbyte * )s->name + length + 1 );
+			s->type = SHADER_BSP_VERTEX;
+			s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT|(r_lighting_additivedlights->integer ? SHADER_NO_MODULATIVE_DLIGHTS : 0);
+			s->features = MF_STCOORDS|MF_COLORS;
+			s->sort = SHADER_SORT_OPAQUE;
+			s->numpasses = 1 + (r_lighting_additivedlights->integer ? 2 : 0);
+			s->name = Shader_Malloc( length + 1 + sizeof( shaderpass_t ) * s->numpasses );
+			strcpy( s->name, shortname );
+			s->passes = ( shaderpass_t * )( ( qbyte * )s->name + length + 1 );
 
-				pass = &s->passes[0];
-				pass->flags = SHADERPASS_DELUXEMAP|GLSTATE_DEPTHWRITE|SHADERPASS_NOCOLORARRAY|SHADERPASS_BLEND_REPLACE;
-				pass->tcgen = TC_GEN_BASE;
-				pass->rgbgen.type = RGB_GEN_LIGHTING_DIFFUSE;
-				pass->alphagen.type = ALPHA_GEN_IDENTITY;
-				pass->program = DEFAULT_GLSL_PROGRAM;
-				pass->program_type = PROGRAM_TYPE_MATERIAL;
-				pass->anim_frames[0] = Shader_FindImage( s, shortname, addFlags, 0 );
-				pass->anim_frames[1] = materialImages[0]; // normalmap
-				pass->anim_frames[2] = materialImages[1]; // glossmap
-				pass->anim_frames[3] = materialImages[2]; // decalmap
-				if( !r_lighting_additivedlights->integer )
-					pass->anim_frames[5] = ( (image_t *)1 );
-			}
-			else
-			{
-				s->type = SHADER_BSP_VERTEX;
-				s->flags = SHADER_DEPTHWRITE|SHADER_CULL_FRONT|(r_lighting_additivedlights->integer ? SHADER_NO_MODULATIVE_DLIGHTS : 0);
-				s->features = MF_STCOORDS|MF_COLORS;
-				s->sort = SHADER_SORT_OPAQUE;
-				s->numpasses = 1 + (r_lighting_additivedlights->integer ? 2 : 0);
-				s->name = Shader_Malloc( length + 1 + sizeof( shaderpass_t ) * s->numpasses );
-				strcpy( s->name, shortname );
-				s->passes = ( shaderpass_t * )( ( qbyte * )s->name + length + 1 );
+			s->numpasses = 0;
+			pass = &s->passes[s->numpasses++];
+			pass->flags = GLSTATE_DEPTHWRITE|SHADERPASS_BLEND_MODULATE /*|GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ZERO*/;
+			pass->tcgen = TC_GEN_BASE;
+			pass->rgbgen.type = RGB_GEN_VERTEX;
+			pass->alphagen.type = ALPHA_GEN_IDENTITY;
 
-				s->numpasses = 0;
+			if( r_lighting_additivedlights->integer )
+			{
+				pass->anim_frames[0] = r_whitetexture;
+
 				pass = &s->passes[s->numpasses++];
-				pass->flags = GLSTATE_DEPTHWRITE|SHADERPASS_BLEND_MODULATE /*|GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ZERO*/;
+				pass->flags = SHADERPASS_DLIGHT|GLSTATE_DEPTHFUNC_EQ|SHADERPASS_BLEND_ADD|GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE;
 				pass->tcgen = TC_GEN_BASE;
-				pass->rgbgen.type = RGB_GEN_VERTEX;
+
+				pass = &s->passes[s->numpasses++];
+				pass->flags = SHADERPASS_NOCOLORARRAY|SHADERPASS_BLEND_MODULATE|GLSTATE_SRCBLEND_ZERO|GLSTATE_DSTBLEND_SRC_COLOR;
+				pass->tcgen = TC_GEN_BASE;
+				pass->rgbgen.type = RGB_GEN_IDENTITY;
 				pass->alphagen.type = ALPHA_GEN_IDENTITY;
-
-				if( r_lighting_additivedlights->integer )
-				{
-					pass->anim_frames[0] = r_whitetexture;
-
-					pass = &s->passes[s->numpasses++];
-					pass->flags = SHADERPASS_DLIGHT|GLSTATE_DEPTHFUNC_EQ|SHADERPASS_BLEND_ADD|GLSTATE_SRCBLEND_ONE|GLSTATE_DSTBLEND_ONE;
-					pass->tcgen = TC_GEN_BASE;
-
-					pass = &s->passes[s->numpasses++];
-					pass->flags = SHADERPASS_NOCOLORARRAY|SHADERPASS_BLEND_MODULATE|GLSTATE_SRCBLEND_ZERO|GLSTATE_DSTBLEND_SRC_COLOR;
-					pass->tcgen = TC_GEN_BASE;
-					pass->rgbgen.type = RGB_GEN_IDENTITY;
-					pass->alphagen.type = ALPHA_GEN_IDENTITY;
-				}
-
-				pass->anim_frames[0] = Shader_FindImage( s, shortname, addFlags, 0 );
 			}
+
+			pass->anim_frames[0] = Shader_FindImage( s, shortname, addFlags, 0 );
 			break;
 		case SHADER_BSP_FLARE:
 			s->type = SHADER_BSP_FLARE;
@@ -2916,7 +2868,7 @@ create_default:
 				pass->anim_frames[0] = Shader_FindImage( s, shortname, addFlags, 0 );
 				pass->anim_frames[1] = materialImages[0]; // normalmap
 				pass->anim_frames[2] = materialImages[1]; // glossmap
-				pass->anim_frames[3] = materialImages[2]; // decalmap
+				pass->anim_frames[3] = materialImages[2]; // glossmap
 				if( !r_lighting_additivedlights->integer )
 					pass->anim_frames[5] = ( (image_t *)1 );
 			}

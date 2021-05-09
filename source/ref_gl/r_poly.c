@@ -100,7 +100,7 @@ void R_AddPolysToList( void )
 			lastFog = fog;
 			VectorCopy( p->normal, lastNormal );
 
-			mb = R_AddMeshToList( MB_POLY, fog, shader, -( (signed int)i+1 ), NULL, 0, 0 );
+			mb = R_AddMeshToList( MB_POLY, fog, shader, -( (signed int)i+1 ) );
 			mb->lastPoly = i;
 		}
 	}

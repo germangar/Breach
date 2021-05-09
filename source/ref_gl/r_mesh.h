@@ -59,7 +59,7 @@ enum
 
 typedef struct mesh_s
 {
-	unsigned short		numVertexes;
+	int					numVertexes;
 	vec4_t				*xyzArray;
 	vec4_t				*normalsArray;
 	vec4_t				*sVectorsArray;
@@ -67,7 +67,7 @@ typedef struct mesh_s
 	vec2_t				*lmstArray[MAX_LIGHTMAPS];
 	byte_vec4_t			*colorsArray[MAX_LIGHTMAPS];
 
-	unsigned short		numElems;
+	int					numElems;
 	elem_t				*elems;
 } mesh_t;
 
@@ -95,10 +95,6 @@ typedef struct
 		unsigned int	LODModelHandle;
 	};
 	unsigned int		shadowbits;
-
-	// the following is only valid for world surfaces
-	const mesh_t		*mesh;
-	unsigned			short numVertexes, numElems;
 } meshbuffer_t;
 
 typedef struct

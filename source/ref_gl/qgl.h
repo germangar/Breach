@@ -530,19 +530,6 @@ QGL_FUNC(void, glVertex3fv, (const GLfloat *v));
 QGL_FUNC(void, glVertexPointer, (GLint size, GLenum type, GLsizei stride, const GLvoid *pointer));
 QGL_FUNC(void, glViewport, (GLint x, GLint y, GLsizei width, GLsizei height));
 
-QGL_FUNC(void, glFogfv, (GLenum pname, const GLfloat *params));
-QGL_FUNC(void, glFogiv, (GLenum pname, const GLint *params));
-QGL_FUNC(void, glFogi, (GLenum pname, const GLint param));
-
-QGL_FUNC(void, glLightModelf, (GLenum pname, GLfloat param));
-QGL_FUNC(void, glLightModelfv, (GLenum pname, const GLfloat *params));
-QGL_FUNC(void, glLightModeli, (GLenum pname, GLint param));
-QGL_FUNC(void, glLightModeliv, (GLenum pname, const GLint *params));
-QGL_FUNC(void, glLightf, (GLenum light, GLenum pname, GLfloat param));
-QGL_FUNC(void, glLightfv, (GLenum light, GLenum pname, const GLfloat *params));
-QGL_FUNC(void, glLighti, (GLenum light, GLenum pname, GLint param));
-QGL_FUNC(void, glLightiv, (GLenum light, GLenum pname, const GLint *params));
-
 QGL_EXT(void, glLockArraysEXT, (int , int ));
 QGL_EXT(void, glUnlockArraysEXT, (void));
 QGL_EXT(void, glSelectTextureSGIS, (GLenum ));

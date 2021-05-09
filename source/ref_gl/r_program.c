@@ -23,7 +23,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 
 #define MAX_GLSL_PROGRAMS	    1024
-#define GLSL_PROGRAMS_HASH_SIZE 32
 
 typedef struct
 {
@@ -32,14 +31,12 @@ typedef struct
 	const char		*suffix;
 } glsl_feature_t;
 
-typedef struct glsl_program_s
+typedef struct
 {
 	char			*name;
-	int				type;
-	int				features;
+	unsigned int	features;
 	const char		*string;
-	struct glsl_program_s *hash_next;
-	
+
 	int				object;
 	int				vertexShader;
 	int				fragmentShader;
@@ -59,24 +56,19 @@ typedef struct glsl_program_s
 					locOutlineCutOff,
 #endif
 					locFrontPlane,
-					locInvTextureWidth,
-					locInvTextureHeight,
+					locTextureWidth,
+					locTextureHeight,
 					locProjDistance,
 
 					locTurbAmplitude,
 					locTurbPhase,
-
-					locFogPlane,
-					locEyeFogDist,
 
 					locDeluxemapOffset[MAX_LIGHTMAPS],
 					loclsColor[MAX_LIGHTMAPS]
 	;
 } glsl_program_t;
 
-static int r_numglslprograms;
 static glsl_program_t r_glslprograms[MAX_GLSL_PROGRAMS];
-static glsl_program_t *r_glslprograms_hash[GLSL_PROGRAMS_HASH_SIZE];
 static mempool_t *r_glslProgramsPool;
 
 static void R_GetProgramUniformLocations( glsl_program_t *program );
@@ -88,7 +80,6 @@ static const char *r_defaultShadowmapGLSLProgram;
 static const char *r_defaultOutlineGLSLProgram;
 #endif
 static const char *r_defaultTurbulenceProgram;
-static const char *r_defaultDynamicLightsProgram;
 
 /*
 ================
@@ -97,11 +88,9 @@ R_InitGLSLPrograms
 */
 void R_InitGLSLPrograms( void )
 {
-	int i, bit;
 	int features, common;
 
 	memset( r_glslprograms, 0, sizeof( r_glslprograms ) );
-	memset( r_glslprograms_hash, 0, sizeof( r_glslprograms_hash ) );
 
 	if( !glConfig.ext.GLSL )
 		return;
@@ -114,10 +103,10 @@ void R_InitGLSLPrograms( void )
 	// register programs that are most likely to be used
 
 	features = common;
-	R_RegisterGLSLProgram( PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_PROGRAM, NULL, 0|features );
-	R_RegisterGLSLProgram( PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_FB_LIGHTMAP|PROGRAM_APPLY_LIGHTSTYLE0|features );
-	R_RegisterGLSLProgram( PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_FB_LIGHTMAP|PROGRAM_APPLY_LIGHTSTYLE0|PROGRAM_APPLY_SPECULAR|features );
-	R_RegisterGLSLProgram( PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_FB_LIGHTMAP|PROGRAM_APPLY_LIGHTSTYLE0
+	R_RegisterGLSLProgram( DEFAULT_GLSL_PROGRAM, NULL, 0|features );
+	R_RegisterGLSLProgram( DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_FB_LIGHTMAP|PROGRAM_APPLY_LIGHTSTYLE0|features );
+	R_RegisterGLSLProgram( DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_FB_LIGHTMAP|PROGRAM_APPLY_LIGHTSTYLE0|PROGRAM_APPLY_SPECULAR|features );
+	R_RegisterGLSLProgram( DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_FB_LIGHTMAP|PROGRAM_APPLY_LIGHTSTYLE0
 		|PROGRAM_APPLY_SPECULAR|PROGRAM_APPLY_AMBIENT_COMPENSATION|features );
 
 	features = common;
@@ -125,31 +114,21 @@ void R_InitGLSLPrograms( void )
 	features |= PROGRAM_APPLY_CELLSHADING;
 #endif
 
-#ifdef HALFLAMBERTLIGHTING
-	features |= PROGRAM_APPLY_HALFLAMBERT;
-#endif
-
-	R_RegisterGLSLProgram( PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_DIRECTIONAL_LIGHT|features );
-//	R_RegisterGLSLProgram( PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_DIRECTIONAL_LIGHT|PROGRAM_APPLY_SPECULAR|features );
-//	R_RegisterGLSLProgram( PROGRAM_TYPE_MATERIAL, DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_DIRECTIONAL_LIGHT|PROGRAM_APPLY_OFFSETMAPPING|features );
+	R_RegisterGLSLProgram( DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_DIRECTIONAL_LIGHT|features );
+//	R_RegisterGLSLProgram( DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_DIRECTIONAL_LIGHT|PROGRAM_APPLY_SPECULAR|features );
+//	R_RegisterGLSLProgram( DEFAULT_GLSL_PROGRAM, NULL, PROGRAM_APPLY_DIRECTIONAL_LIGHT|PROGRAM_APPLY_OFFSETMAPPING|features );
 
 	features = common;
 
-	R_RegisterGLSLProgram( PROGRAM_TYPE_DISTORTION, DEFAULT_GLSL_DISTORTION_PROGRAM, r_defaultDistortionGLSLProgram, 0|features );
+	R_RegisterGLSLProgram( DEFAULT_GLSL_DISTORTION_PROGRAM, r_defaultDistortionGLSLProgram, 0|features );
 
-	R_RegisterGLSLProgram( PROGRAM_TYPE_SHADOWMAP, DEFAULT_GLSL_SHADOWMAP_PROGRAM, r_defaultShadowmapGLSLProgram, 0|features );
+	R_RegisterGLSLProgram( DEFAULT_GLSL_SHADOWMAP_PROGRAM, r_defaultShadowmapGLSLProgram, 0|features );
 
 #ifdef HARDWARE_OUTLINES
-	R_RegisterGLSLProgram( PROGRAM_TYPE_OUTLINE, DEFAULT_GLSL_OUTLINE_PROGRAM, r_defaultOutlineGLSLProgram, 0|features );
+	R_RegisterGLSLProgram( DEFAULT_GLSL_OUTLINE_PROGRAM, r_defaultOutlineGLSLProgram, 0|features );
 #endif
 
-	R_RegisterGLSLProgram( PROGRAM_TYPE_TURBULENCE, DEFAULT_GLSL_TURBULENCE_PROGRAM, r_defaultTurbulenceProgram, 0|features );
-
-	for( i = bit = PROGRAM_APPLY_DLIGHT0; i <= PROGRAM_APPLY_DLIGHT_MAX; i <<= 1 )
-	{
-		bit |= i;
-		R_RegisterGLSLProgram( PROGRAM_TYPE_DYNAMIC_LIGHTS, DEFAULT_GLSL_DYNAMIC_LIGHTS_PROGRAM, r_defaultDynamicLightsProgram, 0|features|bit );
-	}
+	R_RegisterGLSLProgram( DEFAULT_GLSL_TURBULENCE_PROGRAM, r_defaultTurbulenceProgram, 0|features );
 }
 
 /*
@@ -174,8 +153,6 @@ R_DeleteGLSLProgram
 */
 static void R_DeleteGLSLProgram( glsl_program_t *program )
 {
-	glsl_program_t *hash_next;
-
 	if( program->vertexShader )
 	{
 		qglDetachObjectARB( program->object, program->vertexShader );
@@ -196,9 +173,7 @@ static void R_DeleteGLSLProgram( glsl_program_t *program )
 	if( program->name )
 		Mem_Free( program->name );
 
-	hash_next = program->hash_next;
 	memset( program, 0, sizeof( glsl_program_t ) );
-	program->hash_next = hash_next;
 }
 
 /*
@@ -259,23 +234,10 @@ int R_FindGLSLProgram( const char *name )
 	return 0;
 }
 
-// ======================================================================================
-
 #define MAX_DEFINES_FEATURES	255
 
-static const glsl_feature_t glsl_features_standard[] =
+static const glsl_feature_t glsl_features[] =
 {
-	{ PROGRAM_APPLY_CLIPPING, "#define APPLY_CLIPPING\n", "_clip" },
-	{ PROGRAM_APPLY_GRAYSCALE, "#define APPLY_GRAYSCALE\n", "_grey" },
-
-	{ 0, NULL, NULL }
-};
-
-static const glsl_feature_t glsl_features_materal[] =
-{
-	{ PROGRAM_APPLY_CLIPPING, "#define APPLY_CLIPPING\n", "_clip" },
-	{ PROGRAM_APPLY_GRAYSCALE, "#define APPLY_GRAYSCALE\n", "_grey" },
-
 	{ PROGRAM_APPLY_LIGHTSTYLE0, "#define APPLY_LIGHTSTYLE0\n", "_ls0" },
 	{ PROGRAM_APPLY_FB_LIGHTMAP, "#define APPLY_FBLIGHTMAP\n", "_fb" },
 	{ PROGRAM_APPLY_LIGHTSTYLE1, "#define APPLY_LIGHTSTYLE1\n", "_ls1" },
@@ -289,24 +251,6 @@ static const glsl_feature_t glsl_features_materal[] =
 	{ PROGRAM_APPLY_DECAL, "#define APPLY_DECAL\n", "_decal" },
 	{ PROGRAM_APPLY_BASETEX_ALPHA_ONLY, "#define APPLY_BASETEX_ALPHA_ONLY\n", "_alpha" },
 	{ PROGRAM_APPLY_DECAL_ADD, "#define APPLY_DECAL_ADD\n", "_decal_add" },
-	{ PROGRAM_APPLY_CLAMPING, "#define APPLY_COLOR_CLAMPING\n", "_clamp" },
-	{ PROGRAM_APPLY_CELLSHADING, "#define APPLY_CELLSHADING\n", "_cell" },
-
-	// doesn't make sense without APPLY_DIRECTIONAL_LIGHT
-	{ PROGRAM_APPLY_DIRECTIONAL_LIGHT_MIX, "#define APPLY_DIRECTIONAL_LIGHT_MIX\n", "_mix" },
-
-	{ PROGRAM_APPLY_FOG, "#define APPLY_FOG\n", "_fog" },
-	{ PROGRAM_APPLY_FOG2, "#define APPLY_FOG2\n", "_2" },
-
-	{ PROGRAM_APPLY_HALFLAMBERT, "#define APPLY_HALFLAMBERT\n", "_2" },
-
-	{ 0, NULL, NULL }
-};
-
-static const glsl_feature_t glsl_features_distortion[] =
-{
-	{ PROGRAM_APPLY_CLIPPING, "#define APPLY_CLIPPING\n", "_clip" },
-	{ PROGRAM_APPLY_GRAYSCALE, "#define APPLY_GRAYSCALE\n", "_grey" },
 
 	{ PROGRAM_APPLY_DUDV, "#define APPLY_DUDV\n", "_dudv" },
 	{ PROGRAM_APPLY_EYEDOT, "#define APPLY_EYEDOT\n", "_eyedot" },
@@ -314,63 +258,19 @@ static const glsl_feature_t glsl_features_distortion[] =
 	{ PROGRAM_APPLY_REFLECTION, "#define APPLY_REFLECTION\n", "_refl" },
 	{ PROGRAM_APPLY_REFRACTION, "#define APPLY_REFRACTION\n", "_refr" },
 
-	{ 0, NULL, NULL }
-};
-
-static const glsl_feature_t glsl_features_shadowmap[] =
-{
-	{ PROGRAM_APPLY_CLIPPING, "#define APPLY_CLIPPING\n", "_clip" },
-
 	{ PROGRAM_APPLY_PCF2x2, "#define APPLY_PCF2x2\n", "_pcf2x2" },
 	{ PROGRAM_APPLY_PCF3x3, "#define APPLY_PCF3x3\n", "_pcf3x3" },
 
-	{ 0, NULL, NULL }
-};
-
-static const glsl_feature_t glsl_features_outline[] =
-{
 	{ PROGRAM_APPLY_CLIPPING, "#define APPLY_CLIPPING\n", "_clip" },
+
+	{ PROGRAM_APPLY_CLAMPING, "#define APPLY_COLOR_CLAMPING\n", "_clamp" },
+
+	{ PROGRAM_APPLY_CELLSHADING, "#define APPLY_CELLSHADING\n", "_cell" },
+
+	{ PROGRAM_APPLY_GRAYSCALE, "#define APPLY_GRAYSCALE\n", "_cell" },
 
 	{ PROGRAM_APPLY_OUTLINES_CUTOFF, "#define APPLY_OUTLINES_CUTOFF\n", "_outcut" },
-
-	{ 0, NULL, NULL }
 };
-
-static const glsl_feature_t glsl_features_dynamiclights[] =
-{
-	{ PROGRAM_APPLY_CLIPPING, "#define APPLY_CLIPPING\n", "_clip" },
-
-	{ PROGRAM_APPLY_DLIGHT0, "#undef MAX_DLIGHTS\n#define MAX_DLIGHTS 1\n", "_0" },
-	{ PROGRAM_APPLY_DLIGHT1, "#undef MAX_DLIGHTS\n#define MAX_DLIGHTS 2\n", "1" },
-	{ PROGRAM_APPLY_DLIGHT2, "#undef MAX_DLIGHTS\n#define MAX_DLIGHTS 3\n", "2" },
-	{ PROGRAM_APPLY_DLIGHT3, "#undef MAX_DLIGHTS\n#define MAX_DLIGHTS 4\n", "3" },
-	{ PROGRAM_APPLY_DLIGHT4, "#undef MAX_DLIGHTS\n#define MAX_DLIGHTS 5\n", "4" },
-	{ PROGRAM_APPLY_DLIGHT5, "#undef MAX_DLIGHTS\n#define MAX_DLIGHTS 6\n", "5" },
-	{ PROGRAM_APPLY_DLIGHT6, "#undef MAX_DLIGHTS\n#define MAX_DLIGHTS 7\n", "6" },
-	{ PROGRAM_APPLY_DLIGHT7, "#undef MAX_DLIGHTS\n#define MAX_DLIGHTS 8\n", "7" },
-
-	{ 0, NULL, NULL }
-};
-
-static const glsl_feature_t * const glsl_programtypes_features[] =
-{
-	// PROGRAM_TYPE_NONE
-	NULL,
-	// PROGRAM_TYPE_MATERIAL
-	glsl_features_materal,
-	// PROGRAM_TYPE_DISTORTION
-	glsl_features_distortion,
-	// PROGRAM_TYPE_SHADOWMAP
-	glsl_features_shadowmap,
-	// PROGRAM_TYPE_OUTLINE
-	glsl_features_outline,
-	// PROGRAM_TYPE_TURBULENCE
-	glsl_features_standard,
-	// PROGRAM_TYPE_DYNAMIC_LIGHTS
-	glsl_features_dynamiclights
-};
-
-// ======================================================================================
 
 #define MYHALFTYPES "" \
 "#if !defined(__GLSL_CG_DATA_TYPES)\n" \
@@ -417,10 +317,6 @@ MYHALFTYPES
 "uniform vec3 LightDir;\n"
 "#endif\n"
 "\n"
-"#ifdef APPLY_FOG\n"
-"uniform vec4 FogPlane;\n"
-"#endif\n"
-"\n"
 "void main()\n"
 "{\n"
 "gl_FrontColor = gl_Color;\n"
@@ -459,11 +355,6 @@ MYHALFTYPES
 "gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;\n"
 "#endif\n"
 "#endif\n"
-"\n"
-"#ifdef APPLY_FOG\n"
-"gl_FogFragCoord = dot(gl_Vertex.xyz, FogPlane.xyz) - FogPlane.w;\n"
-"#endif\n"
-"\n"
 "}\n"
 "\n"
 "#endif // VERTEX_SHADER\n"
@@ -562,10 +453,6 @@ MYHALFTYPES
 "}\n"
 "#endif\n"
 "\n"
-"#if defined(APPLY_FOG) && defined(APPLY_FOG2)\n"
-"uniform float EyeFogDist;\n"
-"#endif\n"
-"\n"
 "void main()\n"
 "{\n"
 "#if defined(APPLY_OFFSETMAPPING) || defined(APPLY_RELIEFMAPPING)\n"
@@ -600,23 +487,11 @@ MYHALFTYPES
 "#ifdef APPLY_DIRECTIONAL_LIGHT\n"
 "diffuseNormal = myhalf3 (LightVector);\n"
 "weightedDiffuseNormal = diffuseNormal;\n"
-"\n"
+"diffuseProduct = float (dot (surfaceNormal, diffuseNormal));\n"
 "#ifdef APPLY_CELLSHADING\n"
 "hardShadow = 0.0;\n"
-"#ifdef APPLY_HALFLAMBERT\n"
-"diffuseProduct = float (dot (surfaceNormal, diffuseNormal));\n"
-"diffuseProductPositive = float ( clamp(diffuseProduct, 0.0, 1.0) * 0.5 + 0.5 );\n"
-"diffuseProductPositive *= diffuseProductPositive;\n"
-"diffuseProductNegative = float ( clamp(diffuseProduct, -1.0, 0.0) * 0.5 - 0.5 );\n"
-"diffuseProductNegative *= diffuseProductNegative;\n"
-"diffuseProductNegative -= 0.25;\n"
-"diffuseProduct = diffuseProductPositive;\n"
-"#else\n"
-"diffuseProduct = float (dot (surfaceNormal, diffuseNormal));\n"
 "diffuseProductPositive = max (diffuseProduct, 0.0);\n"
 "diffuseProductNegative = (-min (diffuseProduct, 0.0) - 0.3);\n"
-"#endif\n"
-"\n"
 "\n"
 "// smooth the hard shadow edge\n"
 "lightcell = int(max(diffuseProduct + 0.1, 0.0) * 2.0);\n"
@@ -634,18 +509,7 @@ MYHALFTYPES
 "lightcell = int (diffuseProductNegative * 2.0);\n"
 "color.rgb += myhalf (float(lightcell) * 0.085 + diffuseProductNegative * 0.085);\n"
 "#else\n"
-"#ifdef APPLY_HALFLAMBERT\n"
-"diffuseProduct = float ( clamp(dot (surfaceNormal, diffuseNormal), 0.0, 1.0) * 0.5 + 0.5 );\n"
-"diffuseProduct *= diffuseProduct;\n"
-"#else\n"
-"diffuseProduct = float (dot (surfaceNormal, diffuseNormal));\n"
-"#endif\n"
-"\n"
-"#ifdef APPLY_DIRECTIONAL_LIGHT_MIX\n"
-"color.rgb += LightDiffuse.rgb * myhalf(max (diffuseProduct, 0.0)) * 0.65 + gl_Color.rgb * 0.25 + LightAmbient;\n"
-"#else\n"
-"color.rgb += LightDiffuse.rgb * myhalf(max (diffuseProduct, 0.0)) + LightAmbient;\n"
-"#endif\n"
+"color.rgb += LightDiffuse.rgb * myhalf(max (diffuseProduct, 0.0)) + LightAmbient.rgb;\n"
 "#endif\n"
 "\n"
 "#endif\n"
@@ -735,36 +599,19 @@ MYHALFTYPES
 "if (decal.a > 0.0)\n"
 "{\n"
 "decal = decal * myhalf4(texture2D(DecalTexture, TexCoord));\n"
-"color.rgb = mix(color.rgb, decal.rgb, decal.a);\n"
+"color.rgb = decal.rgb * decal.a + color.rgb * (1.0-decal.a);\n"
 "}\n"
 "#endif\n"
-"#else\n"
-"#if defined (APPLY_DIRECTIONAL_LIGHT_MIX) && defined(APPLY_DIRECTIONAL_LIGHT_MIX)\n"
-"color = color;\n"
 "#else\n"
 "color = color * myhalf4(gl_Color.rgba);\n"
 "#endif\n"
-"#endif\n"
 "\n"
 "#ifdef APPLY_GRAYSCALE\n"
-"myhalf grey = dot(color, myhalf3(0.299, 0.587, 0.114));\n"
-"color.rgb = myhalf3(grey);\n"
-"#endif\n"
-"\n"
-"#ifdef APPLY_FOG\n"
-"if (gl_FogFragCoord < 0.1)\n"
-"{\n"
-"float frac = (gl_FragCoord.z / gl_FragCoord.w - gl_Fog.start) * gl_Fog.scale;\n"
-"#ifdef APPLY_FOG2\n"
-"frac *= gl_FogFragCoord / (gl_FogFragCoord - EyeFogDist);\n"
-"#endif\n"
-"frac = sqrt(clamp(frac, 0.0, 1.0));\n"
-"\n"
-"color.rgb = mix(color.rgb, myhalf3(gl_Fog.color.rgb), myhalf(frac));\n"
-"}\n"
-"#endif\n"
-"\n"
+"float grey = dot(color, myhalf3(0.299, 0.587, 0.114));\n"
+"gl_FragColor = vec4(vec3(grey),color.a);\n"
+"#else\n"
 "gl_FragColor = vec4(color);\n"
+"#endif\n"
 "}\n"
 "\n"
 "#endif // FRAGMENT_SHADER\n"
@@ -837,7 +684,7 @@ MYHALFTYPES
 "#endif\n"
 "uniform sampler2D ReflectionTexture;\n"
 "uniform sampler2D RefractionTexture;\n"
-"uniform float InvTextureWidth, InvTextureHeight;\n"
+"uniform float TextureWidth, TextureHeight;\n"
 "\n"
 "void main(void)\n"
 "{\n"
@@ -854,8 +701,8 @@ MYHALFTYPES
 "\n"
 "// get projective texcoords\n"
 "float scale = float(1.0 / float(ProjVector.w));\n"
-"float inv2NW = InvTextureWidth * 0.5;\n"
-"float inv2NH = InvTextureHeight * 0.5;\n"
+"float inv2NW = 1.0 / (2.0 * float (TextureWidth));\n"
+"float inv2NH = 1.0 / (2.0 * float (TextureHeight));\n"
 "vec2 projCoord = (vec2(ProjVector.xy) * scale + vec2 (1.0)) * vec2 (0.5) + vec2(fdist.xy);\n"
 "projCoord.s = float (clamp (float(projCoord.s), inv2NW, 1.0 - inv2NW));\n"
 "projCoord.t = float (clamp (float(projCoord.t), inv2NH, 1.0 - inv2NH));\n"
@@ -942,7 +789,7 @@ MYHALFTYPES
 "\n"
 "uniform myhalf3 LightAmbient;\n"
 "\n"
-"uniform float InvTextureWidth, InvTextureHeight;\n"
+"uniform float TextureWidth, TextureHeight;\n"
 "uniform float ProjDistance;\n"
 "uniform sampler2DShadow ShadowmapTexture;\n"
 "\n"
@@ -953,8 +800,8 @@ MYHALFTYPES
 "if (ProjVector.w <= 0.0 || ProjVector.w >= ProjDistance)\n"
 "discard;\n"
 "\n"
-"float dtW = InvTextureWidth;\n"
-"float dtH = InvTextureHeight;\n"
+"float dtW  = 1.0 / TextureWidth;\n"
+"float dtH  = 1.0 / TextureHeight;\n"
 "\n"
 "vec3 coord = vec3 (ProjVector.xyz / ProjVector.w);\n"
 "coord = (coord + vec3 (1.0)) * vec3 (0.5);\n"
@@ -1016,6 +863,8 @@ static const char *r_defaultOutlineGLSLProgram =
 "// " APPLICATION " GLSL shader\n"
 "\n"
 "\n"
+"varying vec4 ProjVector;\n"
+"\n"
 "#ifdef VERTEX_SHADER\n"
 "// Vertex shader\n"
 "\n"
@@ -1029,6 +878,7 @@ static const char *r_defaultOutlineGLSLProgram =
 "vec4 v = vec4(gl_Vertex) + n * OutlineHeight;\n"
 "\n"
 "gl_Position = gl_ModelViewProjectionMatrix * v;\n"
+"ProjVector = gl_Position;\n"
 "#ifdef APPLY_CLIPPING\n"
 "#ifdef __GLSL_CG_DATA_TYPES\n"
 "gl_ClipVertex = gl_ModelViewMatrix * v;\n"
@@ -1048,7 +898,7 @@ static const char *r_defaultOutlineGLSLProgram =
 "{\n"
 "\n"
 "#ifdef APPLY_OUTLINES_CUTOFF\n"
-"if (OutlineCutOff > 0.0 && (gl_FragCoord.z / gl_FragCoord.w > OutlineCutOff))\n"
+"if (OutlineCutOff > 0.0 && (ProjVector.w > OutlineCutOff))\n"
 "discard;\n"
 "#endif\n"
 "\n"
@@ -1112,71 +962,6 @@ MYHALFTYPES
 "#endif // FRAGMENT_SHADER\n"
 "\n";
 
-static const char *r_defaultDynamicLightsProgram =
-"// " APPLICATION " GLSL shader\n"
-"\n"
-MYHALFTYPES
-"\n"
-"\n"
-"#ifdef MAX_DLIGHTS\n"
-"varying vec3 DynamicLightSTR[MAX_DLIGHTS];\n"
-"#endif\n"
-"\n"
-"#ifdef VERTEX_SHADER\n"
-"// Vertex shader\n"
-"\n"
-"void main(void)\n"
-"{\n"
-"gl_FrontColor = gl_Color;\n"
-"\n"
-"gl_Position = ftransform ();\n"
-"#ifdef APPLY_CLIPPING\n"
-"#ifdef __GLSL_CG_DATA_TYPES\n"
-"gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;\n"
-"#endif\n"
-"#endif\n"
-"\n"
-"#ifdef MAX_DLIGHTS\n"
-"for (int i = 0; i < MAX_DLIGHTS; i++)\n"
-"{\n"
-"DynamicLightSTR[i] = vec3(gl_LightSource[i].spotCutoff*gl_Vertex.x-gl_LightSource[i].specular.x,\n"
-"gl_LightSource[i].spotCutoff*gl_Vertex.y-gl_LightSource[i].specular.y,\n"
-"gl_LightSource[i].spotCutoff*gl_Vertex.z-gl_LightSource[i].specular.z);\n"
-"}\n"
-"#endif\n"
-"}\n"
-"\n"
-"#endif // VERTEX_SHADER\n"
-"\n"
-"\n"
-"#ifdef FRAGMENT_SHADER\n"
-"// Fragment shader\n"
-"\n"
-"void main(void)\n"
-"{\n"
-"\n"
-"myhalf3 color = myhalf3(0.0);\n"
-"\n"
-"#ifdef MAX_DLIGHTS\n"
-"vec3 DLightSTR;\n"
-"myhalf IntensitySqr;\n"
-"\n"
-"for (int i = 0; i < MAX_DLIGHTS; i++)\n"
-"{\n"
-"DLightSTR = clamp(DynamicLightSTR[i], -1.0, 1.0);\n"
-"IntensitySqr = clamp(1.0 - myhalf(length(DLightSTR)), 0.0, 1.0);\n"
-"IntensitySqr = IntensitySqr * IntensitySqr * 2.0 * 0.85;\n"
-"color.rgb += IntensitySqr * myhalf3(gl_LightSource[i].diffuse);\n"
-"}\n"
-"\n"
-"#endif\n"
-"\n"
-"gl_FragColor = vec4(color.rgb, 1.0);\n"
-"}\n"
-"\n"
-"#endif // FRAGMENT_SHADER\n"
-"\n";
-
 /*
 ================
 R_CommonProgramFeatures
@@ -1198,18 +983,18 @@ R_ProgramFeatures2Defines
 Return an array of strings for bitflags
 ================
 */
-static const char **R_ProgramFeatures2Defines( const glsl_feature_t *type_features, int features, char *name, size_t size )
+static const char **R_ProgramFeatures2Defines( int features, char *name, size_t size )
 {
 	int i, p;
 	static const char *headers[MAX_DEFINES_FEATURES+1]; // +1 for NULL safe-guard
 
-	for( i = 0, p = 0; type_features[i].bit; i++ )
+	for( i = 0, p = 0; i < sizeof( glsl_features ) / sizeof( glsl_features[0] ); i++ )
 	{
-		if( features & type_features[i].bit )
+		if( features & glsl_features[i].bit )
 		{
-			headers[p++] = type_features[i].define;
+			headers[p++] = glsl_features[i].define;
 			if( name )
-				Q_strncatz( name, type_features[i].suffix, size );
+				Q_strncatz( name, glsl_features[i].suffix, size );
 
 			if( p == MAX_DEFINES_FEATURES )
 				break;
@@ -1227,38 +1012,13 @@ static const char **R_ProgramFeatures2Defines( const glsl_feature_t *type_featur
 
 /*
 ================
-R_GLSLProgramHashKey
-================
-*/
-static unsigned int R_GLSLProgramHashKey( const char *name, int type )
-{
-	int i, c;
-	unsigned hashval = 0;
-
-	for( i = 0; name[i]; i++ )
-	{
-		c = tolower( name[i] );
-		if( c == '\\' )
-			c = '/';
-		hashval += (tolower( c ) - ' ') * (i + 119);
-	}
-
-	hashval = (hashval ^ (hashval >> 10) ^ (hashval >> 20));
-	hashval = (hashval ^ type) & ( GLSL_PROGRAMS_HASH_SIZE - 1 );
-
-	return hashval;
-}
-
-/*
-================
 R_RegisterGLSLProgram
 ================
 */
-int R_RegisterGLSLProgram( int type, const char *name, const char *string, int features )
+int R_RegisterGLSLProgram( const char *name, const char *string, unsigned int features )
 {
 	int i;
 	int linked, body, error = 0;
-	unsigned int hash_key;
 	unsigned int minfeatures;
 	glsl_program_t *program, *parent;
 	char fullName[MAX_QPATH];
@@ -1269,20 +1029,19 @@ int R_RegisterGLSLProgram( int type, const char *name, const char *string, int f
 	if( !glConfig.ext.GLSL )
 		return 0; // fail early
 
-	if( type <= PROGRAM_TYPE_NONE || type >= PROGRAM_TYPE_MAXTYPE )
-		return 0;
-
 	parent = NULL;
 	minfeatures = features;
-	hash_key = R_GLSLProgramHashKey( name, type );
-	for( program = r_glslprograms_hash[hash_key]; program; program = program->hash_next )
+	for( i = 0, program = r_glslprograms; i < MAX_GLSL_PROGRAMS; i++, program++ )
 	{
-		if( !strcmp( program->name, name ) )
+		if( !program->name )
+			break;
+
+		if( !Q_stricmp( program->name, name ) )
 		{
 			if ( program->features == features )
-				return ( (program - r_glslprograms) + 1 );
+				return ( i+1 );
 
-			if( !parent || ((unsigned)program->features < minfeatures) )
+			if( !parent || (program->features < minfeatures) )
 			{
 				parent = program;
 				minfeatures = program->features;
@@ -1290,7 +1049,7 @@ int R_RegisterGLSLProgram( int type, const char *name, const char *string, int f
 		}
 	}
 
-	if( r_numglslprograms == MAX_GLSL_PROGRAMS )
+	if( i == MAX_GLSL_PROGRAMS )
 	{
 		Com_Printf( S_COLOR_YELLOW "R_RegisterGLSLProgram: GLSL programs limit exceeded\n" );
 		return 0;
@@ -1304,7 +1063,7 @@ int R_RegisterGLSLProgram( int type, const char *name, const char *string, int f
 			string = r_defaultGLSLProgram;
 	}
 
-	program = r_glslprograms + r_numglslprograms++;
+	program = r_glslprograms + i;
 	program->object = qglCreateProgramObjectARB();
 	if( !program->object )
 	{
@@ -1314,9 +1073,7 @@ int R_RegisterGLSLProgram( int type, const char *name, const char *string, int f
 
 	body = 1;
 	Q_strncpyz( fullName, name, sizeof( fullName ) );
-	header = R_ProgramFeatures2Defines( glsl_programtypes_features[type], features, fullName, sizeof( fullName ) );
-
-	Com_DPrintf( "Registering GLSL program %s\n", fullName );
+	header = R_ProgramFeatures2Defines( features, fullName, sizeof( fullName ) );
 
 	if( header )
 		for( ; header[body-1] && *header[body-1]; body++ );
@@ -1370,16 +1127,9 @@ done:
 	if( error )
 		R_DeleteGLSLProgram( program );
 
-	program->type = type;
 	program->features = features;
 	program->name = R_GLSLProgramCopyString( name );
 	program->string = string;
-
-	if( !program->hash_next )
-	{
-		program->hash_next = r_glslprograms_hash[hash_key];
-		r_glslprograms_hash[hash_key] = program;
-	}
 
 	if( program->object )
 	{
@@ -1420,7 +1170,7 @@ void R_ProgramList_f( void )
 			break;
 
 		Q_strncpyz( fullName, program->name, sizeof( fullName ) );
-		header = R_ProgramFeatures2Defines( glsl_programtypes_features[program->type], program->features, fullName, sizeof( fullName ) );
+		header = R_ProgramFeatures2Defines( program->features, fullName, sizeof( fullName ) );
 
 		Com_Printf( " %3i %s\n", i+1, fullName );
 	}
@@ -1452,7 +1202,7 @@ R_UpdateProgramUniforms
 void R_UpdateProgramUniforms( int elem, const vec3_t eyeOrigin,
 							 const vec3_t lightOrigin, const vec3_t lightDir, const vec4_t ambient, const vec4_t diffuse,
 							 const superLightStyle_t *superLightStyle, qboolean frontPlane, int TexWidth, int TexHeight,
-							 float projDistance, float offsetmappingScale, float glossExponent )
+							 float projDistance, float offsetmappingScale )
 {
 	glsl_program_t *program = r_glslprograms + elem - 1;
 	int overbrights = 1 << max(0, r_overbrightbits->integer);
@@ -1475,14 +1225,14 @@ void R_UpdateProgramUniforms( int elem, const vec3_t eyeOrigin,
 		if( program->locGlossIntensity >= 0 )
 			qglUniform1fARB( program->locGlossIntensity, r_lighting_glossintensity->value * (1.0 / overbrights) );
 		if( program->locGlossExponent >= 0 )
-			qglUniform1fARB( program->locGlossExponent, log( exp( glossExponent ) / overbrights ) );
+			qglUniform1fARB( program->locGlossExponent, log( exp( r_lighting_glossexponent->value ) / overbrights ) );
 	}
 	else
 	{
 		if( program->locGlossIntensity >= 0 )
 			qglUniform1fARB( program->locGlossIntensity, r_lighting_glossintensity->value  );
 		if( program->locGlossExponent >= 0 )
-			qglUniform1fARB( program->locGlossExponent, glossExponent );
+			qglUniform1fARB( program->locGlossExponent, r_lighting_glossexponent->value );
 	}
 
 	if( program->locOffsetMappingScale >= 0 )
@@ -1498,10 +1248,10 @@ void R_UpdateProgramUniforms( int elem, const vec3_t eyeOrigin,
 	if( program->locFrontPlane >= 0 )
 		qglUniform1fARB( program->locFrontPlane, frontPlane ? 1 : -1 );
 
-	if( program->locInvTextureWidth >= 0 )
-		qglUniform1fARB( program->locInvTextureWidth, TexWidth ? 1.0 / TexWidth : 1.0 );
-	if( program->locInvTextureHeight >= 0 )
-		qglUniform1fARB( program->locInvTextureHeight, TexHeight ? 1.0 / TexHeight : 1.0 );
+	if( program->locTextureWidth >= 0 )
+		qglUniform1fARB( program->locTextureWidth, TexWidth );
+	if( program->locTextureHeight >= 0 )
+		qglUniform1fARB( program->locTextureHeight, TexHeight );
 
 	if( program->locProjDistance >= 0 )
 		qglUniform1fARB( program->locProjDistance, projDistance );
@@ -1531,97 +1281,6 @@ void R_UpdateProgramUniforms( int elem, const vec3_t eyeOrigin,
 				qglUniform3fARB( program->loclsColor[i], 0, 0, 0 );
 		}
 	}
-}
-
-/*
-================
-R_UpdateProgramFogParams
-================
-*/
-void R_UpdateProgramFogParams( int elem, byte_vec4_t color, float clearDist, float opaqueDist, cplane_t *fogPlane, cplane_t *eyePlane, float eyeFogDist )
-{
-	GLfloat fog_start, fog_end;
-	GLfloat fog_color[4] = { 0, 0, 0, 1 };
-	glsl_program_t *program = r_glslprograms + elem - 1;
-
-	VectorScale( color, (1.0/255.0), fog_color );
-	fog_start = clearDist, fog_end = opaqueDist;
-
-	qglFogfv( GL_FOG_COLOR, fog_color );
-	qglFogfv( GL_FOG_START, &fog_start );
-	qglFogfv( GL_FOG_END, &fog_end );
-	qglFogi( GL_FOG_MODE, GL_LINEAR );
-
-	if( program->locFogPlane >= 0 )
-		qglUniform4fARB( program->locFogPlane, fogPlane->normal[0], fogPlane->normal[1], fogPlane->normal[2], fogPlane->dist );
-	if( program->locEyeFogDist >= 0 )
-		qglUniform1fARB( program->locEyeFogDist, eyeFogDist );
-}
-
-/*
-================
-R_UpdateProgramLightsParams
-================
-*/
-unsigned int R_UpdateProgramLightsParams( int elem, unsigned int dlightbits )
-{
-	int i, n;
-	int bit;
-	GLfloat v[4], d[4];
-	GLfloat icutoff, cutoff;
-	dlight_t *dl;
-	vec3_t acolor = { 0, 0, 0 };
-	//glsl_program_t *program = r_glslprograms + elem - 1;
-
-	if( !dlightbits )
-		return 0;
-
-	for( i = 0, n = 0, dl = r_dlights; i < MAX_DLIGHTS; i++, dl++ )
-	{
-		if( !(dlightbits & (1<<i)) )
-			continue;
-
-		// in case less color clamping is desired, the following code can be enabled
-		if( 0 )
-		{
-			if( acolor[0] + dl->color[0] > 1 || acolor[1] + dl->color[1] > 1 || acolor[2] + dl->color[2] )
-				break;
-		}
-
-		cutoff = dl->intensity;
-		icutoff = 1.0 / cutoff;
-
-		VectorCopy( dl->origin, v );
-		VectorCopy( dl->color, d );
-
-		qglLightfv( GL_LIGHT0 + n, GL_POSITION, v );
-
-		// hack to avoid doing division in in vertex shader, we're using specular here
-		// because all both position and spotDirection are transformed by the modelview matrix
-		// prior to entering the shader, which is undesirable
-		VectorScale( v, icutoff, v );
-		qglLightfv( GL_LIGHT0 + n, GL_SPECULAR, v );
-		qglLightf( GL_LIGHT0 + n, GL_SPOT_CUTOFF, icutoff );
-		qglLightfv( GL_LIGHT0 + n, GL_DIFFUSE, d );
-
-		VectorAdd( acolor, dl->color, acolor );
-
-		// unmark this dynamic light
-		dlightbits &= ~(1<<i);
-
-		// stop at maximum amount of dynamic lights per program reached
-		bit = (PROGRAM_APPLY_DLIGHT0 << n);
-		if( bit == PROGRAM_APPLY_DLIGHT_MAX )
-			break;
-
-		// can't handle more than GL_MAX_VARYING_FLOATS_ARB/4 lights due to the hardware limit on varying variables
-		if( ++n >= glConfig.maxVaryingFloats / 4 )
-			break;
-		if( n >= r_lighting_maxglsldlights->integer )
-			break;
-	}
-
-	return dlightbits;
 }
 
 /*
@@ -1684,16 +1343,13 @@ static void R_GetProgramUniformLocations( glsl_program_t *program )
 
 	program->locFrontPlane = qglGetUniformLocationARB( program->object, "FrontPlane" );
 
-	program->locInvTextureWidth = qglGetUniformLocationARB( program->object, "InvTextureWidth" );
-	program->locInvTextureHeight = qglGetUniformLocationARB( program->object, "InvTextureHeight" );
+	program->locTextureWidth = qglGetUniformLocationARB( program->object, "TextureWidth" );
+	program->locTextureHeight = qglGetUniformLocationARB( program->object, "TextureHeight" );
 
 	program->locProjDistance = qglGetUniformLocationARB( program->object, "ProjDistance" );
 
 	program->locTurbAmplitude = qglGetUniformLocationARB( program->object, "TurbAmplitude" );
 	program->locTurbPhase = qglGetUniformLocationARB( program->object, "TurbPhase" );
-
-	program->locFogPlane = qglGetUniformLocationARB( program->object, "FogPlane" );
-	program->locEyeFogDist = qglGetUniformLocationARB( program->object, "EyeFogDist" );
 
 	if( locBaseTexture >= 0 )
 		qglUniform1iARB( locBaseTexture, 0 );
@@ -1737,10 +1393,13 @@ void R_ShutdownGLSLPrograms( void )
 	if( !glConfig.ext.GLSL )
 		return;
 
-	for( i = 0, program = r_glslprograms; i < r_numglslprograms; i++, program++ )
+	for( i = 0, program = r_glslprograms; i < MAX_GLSL_PROGRAMS; i++, program++ )
+	{
+		if( !program->object )
+			break;
+
 		R_DeleteGLSLProgram( program );
+	}
 
 	Mem_FreePool( &r_glslProgramsPool );
-
-	r_numglslprograms = 0;
 }

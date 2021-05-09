@@ -325,7 +325,6 @@ extern cvar_t *r_lighting_packlightmaps;
 extern cvar_t *r_lighting_maxlmblocksize;
 extern cvar_t *r_lighting_additivedlights;
 extern cvar_t *r_lighting_vertexlight;
-extern cvar_t *r_lighting_maxglsldlights;
 
 extern cvar_t *r_offsetmapping;
 extern cvar_t *r_offsetmapping_scale;
@@ -374,8 +373,6 @@ extern cvar_t *r_lockpvs;
 extern cvar_t *r_screenshot_jpeg;
 extern cvar_t *r_screenshot_jpeg_quality;
 extern cvar_t *r_swapinterval;
-
-extern cvar_t *r_temp1;
 
 extern cvar_t *gl_finish;
 extern cvar_t *gl_delayfinish;
@@ -520,7 +517,7 @@ qboolean	R_MiptexHasFullbrights( qbyte *pixels, int width, int height );
 // r_light.c
 //
 #define DLIGHT_SCALE	    0.5f
-#define MAX_SUPER_STYLES    1024
+#define MAX_SUPER_STYLES    1023
 
 extern int r_numSuperLightStyles;
 extern superLightStyle_t r_superLightStyles[MAX_SUPER_STYLES];
@@ -579,10 +576,10 @@ int			R_GetCustomColor( int num );
 
 #ifdef HARDWARE_OUTLINES
 void		R_InitOutlines( void );
-void		R_AddModelMeshOutline( unsigned int modhandle, const mfog_t *fog, int meshnum );
+void		R_AddModelMeshOutline( unsigned int modhandle, mfog_t *fog, int meshnum );
 #endif
 
-#define ENTITY_OUTLINE(ent) (( !(ri.params & RP_MIRRORVIEW) && ((ent)->renderfx & RF_VIEWERMODEL) ) ? 0 : (ent)->outlineHeight)
+#define ENTITY_OUTLINE(ent) (( ((ent)->renderfx & RF_VIEWERMODEL) && !(ri.params & RP_MIRRORVIEW) ) ? 0 : (ent)->outlineHeight)
 
 msurface_t *R_TraceLine( trace_t *tr, const vec3_t start, const vec3_t end, int surfumask );
 
@@ -596,8 +593,8 @@ void		R_InitMeshLists( void );
 void		R_FreeMeshLists( void );
 void		R_ClearMeshList( meshlist_t *meshlist );
 void		R_AllocWorldMeshLists( void );
-meshbuffer_t *R_AddMeshToList( int type, const mfog_t *fog, const shader_t *shader, int infokey, const mesh_t *mesh, unsigned short numVerts, unsigned short numElems );
-void		R_AddModelMeshToList( unsigned int modhandle, const mfog_t *fog, const shader_t *shader, int meshnum );
+meshbuffer_t *R_AddMeshToList( int type, mfog_t *fog, shader_t *shader, int infokey );
+void		R_AddModelMeshToList( unsigned int modhandle, mfog_t *fog, shader_t *shader, int meshnum );
 
 void		R_SortMeshes( void );
 void		R_DrawMeshes( void );
@@ -620,7 +617,6 @@ const char	*R_PortalKeyForPlane( cplane_t *plane );
 #define DEFAULT_GLSL_SHADOWMAP_PROGRAM	"*r_defaultShadowmapProgram"
 #define DEFAULT_GLSL_OUTLINE_PROGRAM "*r_defaultOutlineProgram"
 #define DEFAULT_GLSL_TURBULENCE_PROGRAM "*r_defaultTurbulenceProgram"
-#define DEFAULT_GLSL_DYNAMIC_LIGHTS_PROGRAM "*r_defaultDynamicLightsProgram"
 
 enum
 {
@@ -629,86 +625,52 @@ enum
 	PROGRAM_TYPE_DISTORTION,
 	PROGRAM_TYPE_SHADOWMAP,
 	PROGRAM_TYPE_OUTLINE,
-	PROGRAM_TYPE_TURBULENCE,
-	PROGRAM_TYPE_DYNAMIC_LIGHTS,
-
-	PROGRAM_TYPE_MAXTYPE
+	PROGRAM_TYPE_TURBULENCE
 };
 
 enum
 {
-	PROGRAM_APPLY_CLIPPING				= 1 << 0,
-	PROGRAM_APPLY_GRAYSCALE				= 1 << 1
-};
+	PROGRAM_APPLY_LIGHTSTYLE0			= 1 << 0,
+	PROGRAM_APPLY_LIGHTSTYLE1			= 1 << 1,
+	PROGRAM_APPLY_LIGHTSTYLE2			= 1 << 2,
+	PROGRAM_APPLY_LIGHTSTYLE3			= 1 << 3,
+	PROGRAM_APPLY_SPECULAR				= 1 << 4,
+	PROGRAM_APPLY_DIRECTIONAL_LIGHT	    = 1 << 5,
+	PROGRAM_APPLY_FB_LIGHTMAP			= 1 << 6,
+	PROGRAM_APPLY_OFFSETMAPPING			= 1 << 7,
+	PROGRAM_APPLY_RELIEFMAPPING			= 1 << 8,
+	PROGRAM_APPLY_AMBIENT_COMPENSATION  = 1 << 9,
+	PROGRAM_APPLY_DECAL					= 1 << 10,
+	PROGRAM_APPLY_DECAL_ADD				= 1 << 11,
+	PROGRAM_APPLY_BASETEX_ALPHA_ONLY	= 1 << 12,
 
-enum
-{
-	PROGRAM_APPLY_LIGHTSTYLE0			= 1 << 4,
-	PROGRAM_APPLY_LIGHTSTYLE1			= 1 << 5,
-	PROGRAM_APPLY_LIGHTSTYLE2			= 1 << 6,
-	PROGRAM_APPLY_LIGHTSTYLE3			= 1 << 7,
-	PROGRAM_APPLY_SPECULAR				= 1 << 8,
-	PROGRAM_APPLY_DIRECTIONAL_LIGHT	    = 1 << 9,
-	PROGRAM_APPLY_FB_LIGHTMAP			= 1 << 10,
-	PROGRAM_APPLY_OFFSETMAPPING			= 1 << 11,
-	PROGRAM_APPLY_RELIEFMAPPING			= 1 << 12,
-	PROGRAM_APPLY_AMBIENT_COMPENSATION  = 1 << 13,
-	PROGRAM_APPLY_DECAL					= 1 << 14,
-	PROGRAM_APPLY_DECAL_ADD				= 1 << 15,
-	PROGRAM_APPLY_BASETEX_ALPHA_ONLY	= 1 << 16,
-	PROGRAM_APPLY_CLAMPING				= 1 << 17,
-	PROGRAM_APPLY_CELLSHADING			= 1 << 18,
-	PROGRAM_APPLY_DIRECTIONAL_LIGHT_MIX	= 1 << 19,
-	PROGRAM_APPLY_FOG					= 1 << 20,
-	PROGRAM_APPLY_FOG2					= 1 << 21,
-	PROGRAM_APPLY_HALFLAMBERT			= 1 << 22,
-};
+	PROGRAM_APPLY_DUDV					= 1 << 13,
+	PROGRAM_APPLY_EYEDOT				= 1 << 14,
+	PROGRAM_APPLY_DISTORTION_ALPHA		= 1 << 15,
+	PROGRAM_APPLY_REFLECTION			= 1 << 16,
+	PROGRAM_APPLY_REFRACTION			= 1 << 17,
 
-enum
-{
-	PROGRAM_APPLY_DUDV					= 1 << 4,
-	PROGRAM_APPLY_EYEDOT				= 1 << 5,
-	PROGRAM_APPLY_DISTORTION_ALPHA		= 1 << 6,
-	PROGRAM_APPLY_REFLECTION			= 1 << 7,
-	PROGRAM_APPLY_REFRACTION			= 1 << 8
-};
+	PROGRAM_APPLY_PCF2x2				= 1 << 18,
+	PROGRAM_APPLY_PCF3x3				= 1 << 19,
 
-enum
-{
-	PROGRAM_APPLY_PCF2x2				= 1 << 4,
-	PROGRAM_APPLY_PCF3x3				= 1 << 5
-};
+	PROGRAM_APPLY_CLIPPING				= 1 << 20,
+	PROGRAM_APPLY_CLAMPING				= 1 << 21,
 
-enum
-{
-	PROGRAM_APPLY_OUTLINES_CUTOFF		= 1 << 4
-};
+	PROGRAM_APPLY_CELLSHADING			= 1 << 22,
 
-enum
-{
-	PROGRAM_APPLY_DLIGHT0				= 1 << 4,
-	PROGRAM_APPLY_DLIGHT1				= 1 << 5,
-	PROGRAM_APPLY_DLIGHT2				= 1 << 6,
-	PROGRAM_APPLY_DLIGHT3				= 1 << 7,
-	PROGRAM_APPLY_DLIGHT4				= 1 << 8,
-	PROGRAM_APPLY_DLIGHT5				= 1 << 9,
-	PROGRAM_APPLY_DLIGHT6				= 1 << 10,
-	PROGRAM_APPLY_DLIGHT7				= 1 << 11,
-
-	PROGRAM_APPLY_DLIGHT_MAX			= PROGRAM_APPLY_DLIGHT7
+	PROGRAM_APPLY_GRAYSCALE				= 1 << 23,
+	PROGRAM_APPLY_OUTLINES_CUTOFF		= 1 << 24
 };
 
 void		R_InitGLSLPrograms( void );
 int			R_FindGLSLProgram( const char *name );
-int			R_RegisterGLSLProgram( int type, const char *name, const char *string, int features );
+int			R_RegisterGLSLProgram( const char *name, const char *string, unsigned int features );
 int			R_GetProgramObject( int elem );
 int			R_CommonProgramFeatures( void );
 void		R_UpdateProgramUniforms( int elem, const vec3_t eyeOrigin, const vec3_t lightOrigin, const vec3_t lightDir,
 									const vec4_t ambient, const vec4_t diffuse, const superLightStyle_t *superLightStyle,
 									qboolean frontPlane, int TexWidth, int TexHeight,
-									float projDistance, float offsetmappingScale, float glossExponent );
-void		R_UpdateProgramFogParams( int elem, byte_vec4_t color, float clearDist, float opaqueDist, cplane_t *fogPlane, cplane_t *eyePlane, float eyeFogDist );
-unsigned int R_UpdateProgramLightsParams( int elem, unsigned int dlightbits );
+									float projDistance, float offsetmappingScale );
 void		R_ShutdownGLSLPrograms( void );
 void		R_ProgramList_f( void );
 void		R_ProgramDump_f( void );

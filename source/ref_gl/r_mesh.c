@@ -29,8 +29,145 @@ static mempool_t *r_meshlistmempool;
 meshlist_t r_worldlist, r_shadowlist;
 static meshlist_t r_portallist, r_skyportallist;
 
+static void R_QSortMeshBuffers( meshbuffer_t *meshes, int Li, int Ri );
+static void R_ISortMeshBuffers( meshbuffer_t *meshes, int num_meshes );
+
 static qboolean R_AddPortalSurface( const meshbuffer_t *mb );
 static qboolean R_DrawPortalSurface( image_t **renderedtextures );
+
+#define R_MBCopy( in, out ) \
+	( \
+	( out ).sortkey = ( in ).sortkey, \
+	( out ).infokey = ( in ).infokey, \
+	( out ).dlightbits = ( in ).dlightbits, \
+	( out ).shaderkey = ( in ).shaderkey, \
+	( out ).shadowbits = ( in ).shadowbits \
+	)
+
+#define R_MBCmp( mb1, mb2 ) \
+	( \
+	( mb1 ).shaderkey > ( mb2 ).shaderkey ? qtrue : \
+	( mb1 ).shaderkey < ( mb2 ).shaderkey ? qfalse : \
+	( mb1 ).sortkey > ( mb2 ).sortkey ? qtrue : \
+	( mb1 ).sortkey < ( mb2 ).sortkey ? qfalse : \
+	( mb1 ).dlightbits > ( mb2 ).dlightbits ? qtrue : \
+	( mb1 ).dlightbits < ( mb2 ).dlightbits ? qfalse : \
+	( mb1 ).shadowbits > ( mb2 ).shadowbits \
+	)
+
+/*
+================
+R_QSortMeshBuffers
+
+Quicksort
+================
+*/
+static void R_QSortMeshBuffers( meshbuffer_t *meshes, int Li, int Ri )
+{
+	int li, ri, stackdepth = 0, total = Ri + 1;
+	meshbuffer_t median, tempbuf;
+	int lstack[QSORT_MAX_STACKDEPTH], rstack[QSORT_MAX_STACKDEPTH];
+
+mark0:
+	if( Ri - Li > 8 )
+	{
+		li = Li;
+		ri = Ri;
+
+		R_MBCopy( meshes[( Li+Ri ) >> 1], median );
+
+		if( R_MBCmp( meshes[Li], median ) )
+		{
+			if( R_MBCmp( meshes[Ri], meshes[Li] ) )
+				R_MBCopy( meshes[Li], median );
+		}
+		else if( R_MBCmp( median, meshes[Ri] ) )
+		{
+			R_MBCopy( meshes[Ri], median );
+		}
+
+		do
+		{
+			while( R_MBCmp( median, meshes[li] ) ) li++;
+			while( R_MBCmp( meshes[ri], median ) ) ri--;
+
+			if( li <= ri )
+			{
+				R_MBCopy( meshes[ri], tempbuf );
+				R_MBCopy( meshes[li], meshes[ri] );
+				R_MBCopy( tempbuf, meshes[li] );
+
+				li++;
+				ri--;
+			}
+		}
+		while( li < ri );
+
+		if( ( Li < ri ) && ( stackdepth < QSORT_MAX_STACKDEPTH ) )
+		{
+			lstack[stackdepth] = li;
+			rstack[stackdepth] = Ri;
+			stackdepth++;
+			li = Li;
+			Ri = ri;
+			goto mark0;
+		}
+
+		if( li < Ri )
+		{
+			Li = li;
+			goto mark0;
+		}
+	}
+	if( stackdepth )
+	{
+		--stackdepth;
+		Ri = ri = rstack[stackdepth];
+		Li = li = lstack[stackdepth];
+		goto mark0;
+	}
+
+	for( li = 1; li < total; li++ )
+	{
+		R_MBCopy( meshes[li], tempbuf );
+		ri = li - 1;
+
+		while( ( ri >= 0 ) && ( R_MBCmp( meshes[ri], tempbuf ) ) )
+		{
+			R_MBCopy( meshes[ri], meshes[ri+1] );
+			ri--;
+		}
+		if( li != ri+1 )
+			R_MBCopy( tempbuf, meshes[ri+1] );
+	}
+}
+
+/*
+================
+R_ISortMeshes
+
+Insertion sort
+================
+*/
+static void R_ISortMeshBuffers( meshbuffer_t *meshes, int num_meshes )
+{
+	int i, j;
+	meshbuffer_t tempbuf;
+
+	for( i = 1; i < num_meshes; i++ )
+	{
+		R_MBCopy( meshes[i], tempbuf );
+		j = i - 1;
+
+		while( ( j >= 0 ) && ( R_MBCmp( meshes[j], tempbuf ) ) )
+		{
+			R_MBCopy( meshes[j], meshes[j+1] );
+			j--;
+		}
+		if( i != j+1 )
+			R_MBCopy( tempbuf, meshes[j+1] );
+	}
+}
 
 /*
 =================
@@ -64,7 +201,7 @@ Calculate sortkey and store info used for batching and sorting.
 All 3D-geometry passes this function.
 =================
 */
-meshbuffer_t *R_AddMeshToList( int type, const mfog_t *fog, const shader_t *shader, int infokey, const mesh_t *mesh, unsigned short numVerts, unsigned short numElems )
+meshbuffer_t *R_AddMeshToList( int type, mfog_t *fog, shader_t *shader, int infokey )
 {
 	meshlist_t *list;
 	meshbuffer_t *meshbuf;
@@ -119,18 +256,6 @@ meshbuffer_t *R_AddMeshToList( int type, const mfog_t *fog, const shader_t *shad
 	meshbuf->dlightbits = 0;
 	meshbuf->shadowbits = r_entShadowBits[ri.currententity - r_entities];
 
-	if( mesh )
-	{
-		meshbuf->mesh = mesh;
-		meshbuf->numVertexes = numVerts;
-		meshbuf->numElems = numElems;
-	}
-	else
-	{
-		meshbuf->mesh = NULL;
-		meshbuf->numVertexes = meshbuf->numElems = 0;
-	}
-
 	return meshbuf;
 }
 
@@ -139,11 +264,11 @@ meshbuffer_t *R_AddMeshToList( int type, const mfog_t *fog, const shader_t *shad
 R_AddMeshToList
 =================
 */
-void R_AddModelMeshToList( unsigned int modhandle, const mfog_t *fog, const shader_t *shader, int meshnum )
+void R_AddModelMeshToList( unsigned int modhandle, mfog_t *fog, shader_t *shader, int meshnum )
 {
 	meshbuffer_t *mb;
 	
-	mb = R_AddMeshToList( MB_MODEL, fog, shader, -( meshnum+1 ), NULL, 0, 0 );
+	mb = R_AddMeshToList( MB_MODEL, fog, shader, -( meshnum+1 ) );
 	if( mb )
 		mb->LODModelHandle = modhandle;
 
@@ -169,6 +294,7 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 	qboolean nonMergable;
 	entity_t *ent;
 	shader_t *shader;
+	msurface_t *surf, *nextSurf;
 
 	MB_NUM2ENTITY( mb->sortkey, ent );
 
@@ -190,6 +316,9 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 			MB_NUM2SHADER( mb->shaderkey, shader );
 
 			features = shader->features;
+
+			surf = &r_worldbrushmodel->surfaces[mb->infokey-1];
+			nextSurf = NULL;
 
 			if( shader->flags & SHADER_SKY )
 			{
@@ -218,18 +347,14 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 			if( mapConfig.polygonOffsetSubmodels && ent != r_worldent )
 				features |= MF_POLYGONOFFSET2;
 
-			features |= r_superLightStyles[((mb->sortkey >> 10) - 1) & (MAX_SUPER_STYLES-1)].features;
+			features |= r_superLightStyles[surf->superLightStyle].features;
 
 			if( features & MF_NONBATCHED )
 			{
 				nonMergable = qtrue;
-				features |= MF_NONBATCHED;
 			}
 			else
-			{
-				nonMergable = qtrue;
-
-				// check if we need to render batched geometry this frame
+			{	// check if we need to render batched geometry this frame
 				if( nextmb
 					&& ( nextmb->shaderkey == mb->shaderkey )
 					&& ( nextmb->sortkey == mb->sortkey )
@@ -237,14 +362,15 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 					&& ( nextmb->shadowbits == mb->shadowbits ) )
 				{
 					if( nextmb->infokey > 0 )
-						nonMergable = R_MeshOverflow2( mb, nextmb );
+						nextSurf = &r_worldbrushmodel->surfaces[nextmb->infokey-1];
 				}
 
+				nonMergable = nextSurf ? R_MeshOverflow2( surf->mesh, nextSurf->mesh ) : qtrue;
 				if( nonMergable && !r_backacc.numVerts )
 					features |= MF_NONBATCHED;
 			}
 
-			R_PushMesh( mb->mesh, features );
+			R_PushMesh( surf->mesh, features );
 
 			if( nonMergable )
 			{
@@ -307,36 +433,20 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 
 /*
 ================
-R_SortMeshes
+R_SortMeshList
+
+Use quicksort for opaque meshes and insertion sort for translucent meshes.
 ================
 */
-static int R_MBCmp( const meshbuffer_t *mb1, const meshbuffer_t *mb2 )
-{
-	if( mb1->shaderkey > mb2->shaderkey )
-		return 1;
-	if( mb2->shaderkey > mb1->shaderkey )
-		return -1;
-
-	if( mb1->sortkey > mb2->sortkey )
-		return 1;
-	if( mb2->sortkey > mb1->sortkey )
-		return -1;
-
-	if( mb1->dlightbits > mb2->dlightbits )
-		return 1;
-	if( mb2->dlightbits > mb1->dlightbits )
-		return -1;
-
-	return 0;
-}
-
 void R_SortMeshes( void )
 {
 	if( r_draworder->integer )
 		return;
 
-	qsort( ri.meshlist->meshbuffer_opaque, ri.meshlist->num_opaque_meshes, sizeof( meshbuffer_t ), R_MBCmp );
-	qsort( ri.meshlist->meshbuffer_translucent, ri.meshlist->num_translucent_meshes, sizeof( meshbuffer_t ), R_MBCmp );
+	if( ri.meshlist->num_opaque_meshes )
+		R_QSortMeshBuffers( ri.meshlist->meshbuffer_opaque, 0, ri.meshlist->num_opaque_meshes - 1 );
+	if( ri.meshlist->num_translucent_meshes )
+		R_ISortMeshBuffers( ri.meshlist->meshbuffer_translucent, ri.meshlist->num_translucent_meshes );
 }
 
 /*

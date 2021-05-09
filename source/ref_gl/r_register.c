@@ -67,7 +67,6 @@ cvar_t *r_lighting_packlightmaps;
 cvar_t *r_lighting_maxlmblocksize;
 cvar_t *r_lighting_additivedlights;
 cvar_t *r_lighting_vertexlight;
-cvar_t *r_lighting_maxglsldlights;
 
 cvar_t *r_offsetmapping;
 cvar_t *r_offsetmapping_scale;
@@ -119,8 +118,6 @@ cvar_t *r_lockpvs;
 cvar_t *r_screenshot_jpeg;
 cvar_t *r_screenshot_jpeg_quality;
 cvar_t *r_swapinterval;
-
-cvar_t *r_temp1;
 
 cvar_t *gl_extensions;
 cvar_t *gl_drawbuffer;
@@ -564,10 +561,6 @@ static void R_FinalizeGLExtensions( void )
 	if( strstr( glConfig.extensionsString, "GL_EXT_texture_filter_anisotropic" ) )
 		qglGetIntegerv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &glConfig.maxTextureFilterAnisotropic );
 
-	glConfig.maxVaryingFloats = 0;
-	if( glConfig.ext.GLSL )
-		qglGetIntegerv( GL_MAX_VARYING_FLOATS_ARB, &glConfig.maxVaryingFloats );
-
 	if( glConfig.ext.texture_non_power_of_two )
 	{
 		// blacklist this extension on Radeon X1600-X1950 hardware (they support it only with certain filtering/repeat modes)
@@ -661,7 +654,6 @@ void R_Register( void )
 	r_lighting_maxlmblocksize = Cvar_Get( "r_lighting_maxlmblocksize", "1024", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_lighting_additivedlights = Cvar_Get( "r_lighting_additivedlights", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_lighting_vertexlight = Cvar_Get( "r_lighting_vertexlight", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
-	r_lighting_maxglsldlights = Cvar_Get( "r_lighting_maxglsldlights", "0", CVAR_ARCHIVE );
 
 	r_offsetmapping = Cvar_Get( "r_offsetmapping", "2", CVAR_ARCHIVE );
 	r_offsetmapping_scale = Cvar_Get( "r_offsetmapping_scale", "0.02", CVAR_ARCHIVE );
@@ -708,8 +700,6 @@ void R_Register( void )
 #endif
 	// make sure r_swapinterval is checked after vid_restart
 	r_swapinterval->modified = qtrue;
-
-	r_temp1 = Cvar_Get( "r_temp1", "0", 0 );
 
 	gl_finish = Cvar_Get( "gl_finish", "0", CVAR_ARCHIVE );
 	gl_delayfinish = Cvar_Get( "gl_delayfinish", "1", CVAR_ARCHIVE );
@@ -930,8 +920,6 @@ static void R_GfxInfo_f( void )
 		Com_Printf( "GL_MAX_3D_TEXTURE_SIZE: %i\n", glConfig.maxTextureSize3D );
 	if( glConfig.ext.texture_filter_anisotropic )
 		Com_Printf( "GL_MAX_TEXTURE_MAX_ANISOTROPY: %i\n", glConfig.maxTextureFilterAnisotropic );
-	if( glConfig.ext.GLSL )
-		Com_Printf( "GL_MAX_VARYING_FLOATS: %i\n", glConfig.maxVaryingFloats );
 	Com_Printf( "\n" );
 
 	Com_Printf( "mode: %i%s%s\n", r_mode->integer,

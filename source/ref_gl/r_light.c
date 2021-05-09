@@ -231,8 +231,6 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 				qglDrawRangeElementsEXT( GL_TRIANGLES, 0, r_backacc.numVerts, numTempElems, GL_UNSIGNED_INT, tempElemsArray );
 			else
 				qglDrawElements( GL_TRIANGLES, numTempElems, GL_UNSIGNED_INT, tempElemsArray );
-
-			r_backacc.c_totalTris += numTempElems / 3;
 		}
 		else
 		{
@@ -240,11 +238,7 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 				qglDrawRangeElementsEXT( GL_TRIANGLES, 0, r_backacc.numVerts, r_backacc.numElems, GL_UNSIGNED_INT, elemsArray );
 			else
 				qglDrawElements( GL_TRIANGLES, r_backacc.numElems, GL_UNSIGNED_INT, elemsArray );
-
-			r_backacc.c_totalTris += r_backacc.numElems / 3;
 		}
-
-		r_backacc.c_totalFlushes++;
 	}
 
 	if( glConfig.ext.texture3D )
@@ -307,7 +301,7 @@ void R_DrawCoronas( void )
 		if( tr.fraction != 1.0f )
 			continue;
 
-		mb = R_AddMeshToList( MB_CORONA, NULL, r_coronaShader, -( (signed int)i + 1 ), NULL, 0, 0 );
+		mb = R_AddMeshToList( MB_CORONA, NULL, r_coronaShader, -( (signed int)i + 1 ) );
 		if( mb )
 			mb->shaderkey |= ( bound( 1, 0x4000 - (unsigned int)dist, 0x4000 - 1 ) << 12 );
 	}
@@ -361,8 +355,9 @@ void R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t d
 
 	for( i = 0; i < 4; i++ )
 	{
-		lightarray[i*2+0] = *r_worldbrushmodel->lightarray[bound( 0, elem[i]+0, r_worldbrushmodel->numlightarrayelems-1)];
-		lightarray[i*2+1] = *r_worldbrushmodel->lightarray[bound( 0, elem[i]+1, r_worldbrushmodel->numlightarrayelems-1)];
+		clamp( elem[i], 0, r_worldbrushmodel->numlightarrayelems - 2 );
+		lightarray[i*2+0] = *r_worldbrushmodel->lightarray[elem[i]+0];
+		lightarray[i*2+1] = *r_worldbrushmodel->lightarray[elem[i]+1];
 	}
 
 	t[0] = vf2[0] * vf2[1] * vf2[2];
@@ -762,27 +757,21 @@ static int R_PackLightmaps( int num, int w, int h, int size, int stride, qboolea
 	{
 		for(; ( num >= root ) && ( rectY < maxY ); rectY++, num -= root ) ;
 
-		if( !glConfig.ext.texture_non_power_of_two )
-		{
-			// sample down if not a power of two
-			for( y = 1; y < rectY; y <<= 1 ) ;
-			if( y > rectY )
-				y >>= 1;
-			rectY = y;
-		}
+		// sample down if not a power of two
+		for( y = 1; y < rectY; y <<= 1 ) ;
+		if( y > rectY )
+			y >>= 1;
+		rectY = y;
 	}
 	else
 	{
 		for(; ( num >= root ) && ( rectX < maxX ); rectX++, num -= root ) ;
 
-		if( !glConfig.ext.texture_non_power_of_two )
-		{
-			// sample down if not a power of two
-			for( x = 1; x < rectX; x <<= 1 ) ;
-			if( x > rectX )
-				x >>= 1;
-			rectX = x;
-		}
+		// sample down if not a power of two
+		for( x = 1; x < rectX; x <<= 1 ) ;
+		if( x > rectX )
+			x >>= 1;
+		rectX = x;
 	}
 
 	tw = 1.0 / (double)rectX;

@@ -2626,10 +2626,10 @@ static qbyte *R_InitBlankBumpTexture( int *w, int *h, int *depth, int *flags, in
 	qbyte *data = R_InitSolidColorTexture( w, h, depth, flags, samples, 128 );
 
 /*
-	data[0] = 128;	// normal X
+	data[2] = 128;	// normal X
 	data[1] = 128;	// normal Y
 */
-	data[2] = 255;	// normal Z
+	data[0] = 255;	// normal Z
 	data[3] = 128;	// height
 
 	return data;

@@ -221,10 +221,10 @@ static void Mod_CreateVisLeafs( model_t *mod )
 
 /*
 =================
-Mod_FinishFaces
+Mod_CalcBBoxesForFaces
 =================
 */
-static void Mod_FinishFaces( model_t *mod )
+static void Mod_CalcBBoxesForFaces( model_t *mod )
 {
 	int i, j;
 	mbrushmodel_t *loadbmodel = (( mbrushmodel_t * )mod->extradata);
@@ -236,7 +236,7 @@ static void Mod_FinishFaces( model_t *mod )
 		mesh_t *mesh = surf->mesh;
 		vec3_t ebbox = { 0, 0, 0 };
 
-		if( !mesh || R_InvalidMesh( mesh ) )
+		if( !mesh )
 			continue;
 
 		ClearBounds( surf->mins, surf->maxs );
@@ -244,10 +244,6 @@ static void Mod_FinishFaces( model_t *mod )
 			AddPointToBounds( vert, surf->mins, surf->maxs );
 		VectorSubtract( surf->mins, ebbox, surf->mins );
 		VectorAdd( surf->maxs, ebbox, surf->maxs );
-
-		// store mesh information in surface struct for faster access
-		surf->numVertexes = mesh->numVertexes;
-		surf->numElems = mesh->numElems;
 	}
 }
 
@@ -297,9 +293,9 @@ Mod_FinalizeBrushModel
 */
 static void Mod_FinalizeBrushModel( model_t *model )
 {
-	Mod_FinishFaces( model );
-
 	Mod_CreateVisLeafs( model );
+
+	Mod_CalcBBoxesForFaces( model );
 
 	Mod_SetupSubmodels( model );
 

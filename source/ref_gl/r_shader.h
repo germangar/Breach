@@ -275,7 +275,6 @@ typedef struct shader_s
 	qbyte				fog_color[4];
 	float				fog_dist, fog_clearDist;
 
-	float				gloss_exponent;
 	float				offsetmapping_scale;
 
 	struct shader_s		*hash_next;

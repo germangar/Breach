@@ -85,8 +85,6 @@ int r_viewcluster, r_oldviewcluster, r_viewarea;
 
 float r_farclip_min, r_farclip_bias = 64.0f;
 
-static qboolean r_forceClear = qfalse;
-
 /*
 =================
 GL_DepthRange
@@ -885,9 +883,9 @@ static void R_AddSpriteModelToList( entity_t *e )
 
 	// select skin
 	if( e->customShader )
-		mb = R_AddMeshToList( MB_MODEL, R_FogForSphere( e->origin, frame->radius ), e->customShader, -1, NULL, 0, 0 );
+		mb = R_AddMeshToList( MB_MODEL, R_FogForSphere( e->origin, frame->radius ), e->customShader, -1 );
 	else
-		mb = R_AddMeshToList( MB_MODEL, R_FogForSphere( e->origin, frame->radius ), frame->shader, -1, NULL, 0, 0 );
+		mb = R_AddMeshToList( MB_MODEL, R_FogForSphere( e->origin, frame->radius ), frame->shader, -1 );
 	if( mb )
 		mb->shaderkey |= ( bound( 1, 0x4000 - (unsigned int)dist, 0x4000 - 1 ) << 12 );
 }
@@ -910,7 +908,7 @@ static void R_AddSpritePolyToList( entity_t *e )
 	if( dist < 0 )
 		return; // cull it because we don't want to sort unneeded things
 
-	mb = R_AddMeshToList( MB_SPRITE, R_FogForSphere( e->origin, e->radius ), e->customShader, -1, NULL, 0, 0 );
+	mb = R_AddMeshToList( MB_SPRITE, R_FogForSphere( e->origin, e->radius ), e->customShader, -1 );
 	if( mb )
 		mb->shaderkey |= ( bound( 1, 0x4000 - (unsigned int)dist, 0x4000 - 1 ) << 12 );
 }
@@ -1172,9 +1170,9 @@ void R_InitOutlines( void )
 R_AddModelMeshOutline
 ===============
 */
-void R_AddModelMeshOutline( unsigned int modhandle, const mfog_t *fog, int meshnum )
+void R_AddModelMeshOutline( unsigned int modhandle, mfog_t *fog, int meshnum )
 {
-	meshbuffer_t *mb = R_AddMeshToList( MB_MODEL, fog, r_outlineShader, -( meshnum+1 ), NULL, 0, 0 );
+	meshbuffer_t *mb = R_AddMeshToList( MB_MODEL, fog, r_outlineShader, -( meshnum+1 ) );
 	if( mb )
 		mb->LODModelHandle = modhandle;
 }
@@ -1471,7 +1469,7 @@ static void R_Clear( int bitMask )
 
 	bits = GL_DEPTH_BUFFER_BIT;
 
-	if( !( ri.refdef.rdflags & RDF_NOWORLDMODEL ) && (R_FASTSKY() || r_forceClear || R_ActiveFBObject()) )
+	if( (!( ri.refdef.rdflags & RDF_NOWORLDMODEL ) && R_FASTSKY()) || R_ActiveFBObject() )
 		bits |= GL_COLOR_BUFFER_BIT;
 	if( glState.stencilEnabled )
 		bits |= GL_STENCIL_BUFFER_BIT;
@@ -1900,8 +1898,7 @@ void R_RenderDebugSurface( void )
 		ri.currententity = &r_entities[tr.ent];
 
 		R_ClearMeshList( ri.meshlist );
-		R_AddMeshToList( MB_MODEL, NULL, r_debug_surface->shader, r_debug_surface - r_worldbrushmodel->surfaces + 1, 
-			r_debug_surface->mesh, r_debug_surface->numVertexes, r_debug_surface->numElems );
+		R_AddMeshToList( MB_MODEL, NULL, r_debug_surface->shader, r_debug_surface - r_worldbrushmodel->surfaces + 1 );
 		R_DrawTriangleOutlines( qtrue, qfalse );
 	}
 }
@@ -2126,10 +2123,14 @@ void R_BeginFrame( float cameraSeparation, qboolean forceClear )
 		r_environment_color->modified = qfalse;
 	}
 
-	if( r_clear->integer || forceClear || r_worldmodel && r_worldbrushmodel->globalfog )
-		r_forceClear = qtrue;
-	else
-		r_forceClear = qfalse;
+	if( r_clear->integer || forceClear )
+	{
+		byte_vec4_t color;
+		
+		Vector4Copy( mapConfig.environmentColor, color );
+		qglClearColor( color[0]*( 1.0/255.0 ), color[1]*( 1.0/255.0 ), color[2]*( 1.0/255.0 ), 1 );
+		qglClear( GL_COLOR_BUFFER_BIT );
+	}
 
 	// update gamma
 	if( r_gamma->modified )
