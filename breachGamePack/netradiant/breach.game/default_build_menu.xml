@@ -5,41 +5,47 @@ build commands
 [EnginePath]: path to the engine .. 
 -->
 <project version="2.0">
-  <var name="q3map2">&quot;[RadiantPath]q3map2.[ExecutableType]&quot;<cond value="[MonitorAddress]"> -connect [MonitorAddress]</cond> -game qfusion -fs_basepath &quot;[EnginePath]&quot;<cond value="[GameName]"> -fs_game [GameName]</cond></var>
+
+<var name="q3map2">&quot;[RadiantPath]q3map2.[ExecutableType]&quot;<cond value="[MonitorAddress]"> -connect [MonitorAddress]</cond> -game qfusion -fs_basepath &quot;[EnginePath]&quot;<cond value="[GameName]"> -fs_game [GameName]</cond></var>
+
 <build name="Q3Map2: Test Build">
 <command>[q3map2] -meta -minsamplesize 16 -samplesize 16 -mv 65000 -mi 65000 &quot;[MapFile]&quot;</command>
 <command>[q3map2] -vis -saveprt &quot;[MapFile]&quot;</command>
-<command>[q3map2] -light -deluxe -patchshadows -v -fast -fastgrid -minsamplesize 8 -samplesize 16 -filter &quot;[MapFile]&quot;</command>
+<command>[q3map2] -light -deluxe -patchshadows -v -fast -fastgrid -minsamplesize 8 -samplesize 16 -filter -nolightmapsearch &quot;[MapFile]&quot;</command>
 </build>
+
 <build name="Q3Map2: Final Build (quick)">
 <command>[q3map2] -meta -samplesize 8 -mv 65000 -mi 65000 &quot;[MapFile]&quot;</command>
 <command>[q3map2] -vis -saveprt &quot;[MapFile]&quot;</command>
-<command>[q3map2] -light -deluxe -patchshadows -v -fast -fastgrid -samplesize 8 -samples 2 -filter -dirty &quot;[MapFile]&quot;</command>
-<command>[q3map2] -minimap -size 256 -sharpen 1 -border 0 "[MapFile]"</command>
+<command>[q3map2] -light -deluxe -patchshadows -v -fast -fastgrid -samplesize 8 -samples 2 -filter -nolightmapsearch -dirty -dirtgain 2.5 &quot;[MapFile]&quot;</command>
 </build>
-<build name="Q3Map2: Final Build with Bounce">
-<command>[q3map2] -meta -samplesize 8 -mv 65000 -mi 65000 &quot;[MapFile]&quot;</command>
+
+<build name="Q3Map2: Final Build (Suitable for release builds) (Recommended _lightingIntensity 1.75): Bounce 3, Samples 4 and Extradist 75">
+<command>[q3map2] -meta -samplesize 8 -maxarea -mv 32000 -mi 32000 -custinfoparms &quot;[MapFile]&quot;</command>
 <command>[q3map2] -vis -saveprt &quot;[MapFile]&quot;</command>
-<command>[q3map2] -light -deluxe -lomem -patchshadows -v -fast -fastgrid -samplesize 8 -samples 2 -bounce 3 -fastbounce -filter -dirty &quot;[MapFile]&quot;</command>
-<command>[q3map2] -minimap -size 256 -sharpen 1 -border 0 "[MapFile]"</command>
+<command>[q3map2] -light -deluxe -patchshadows -v -fast -fastgrid -gridscale 1.0 -samplesize 8 -samples 4 -extradist 75 -bounce 3 -fastbounce -bouncegrid -bouncescale 1.5 -dirty -dirtdepth 72 -dirtscale 1.0 -dirtgain 1.75 &quot;[MapFile]&quot;</command>
 </build>
-<build name="Q3Map2: Final Build (best) with Bounce without Filter">
-<command>[q3map2] -meta -samplesize 8 -mv 65000 -mi 65000 &quot;[MapFile]&quot;</command>
+
+<build name="Q3Map2: Final Build with randomsamples (Suitable for release builds) (Recommended _lightingIntensity 1.75): Bounce 3, Samples 4 and Extradist 75">
+<command>[q3map2] -meta -samplesize 8 -maxarea -mv 32000 -mi 32000 -custinfoparms &quot;[MapFile]&quot;</command>
 <command>[q3map2] -vis -saveprt &quot;[MapFile]&quot;</command>
-<command>[q3map2] -light -deluxe -lomem -patchshadows -v -fast -fastgrid -samplesize 8 -samples 4 -bounce 3 -fastbounce -dirty &quot;[MapFile]&quot;</command>
-<command>[q3map2] -minimap -size 256 -sharpen 1 -border 0 "[MapFile]"</command>
+<command>[q3map2] -light -deluxe -patchshadows -v -fast -fastgrid -gridscale 1.0 -randomsamples -samples 128 -extradist 75 -bounce 3 -fastbounce -bouncegrid -bouncescale 1.5 -dirty -dirtdepth 72 -dirtscale 1.0 -dirtgain 1.75 &quot;[MapFile]&quot;</command>
 </build>
+
 <build name="Q3Map2: Rebuild Only Entities">
 <command>[q3map2] -onlyents "[MapFile]"</command>
 </build>
+
 <build name="Q3Map2: Export to ASE (subdivisions 8)">
 <command>[q3map2] -meta -patchmeta -subdivisions 8 "[MapFile]"</command>
 <command>[q3map2] -convert -format ase -shadersasbitmap "[MapFile]"</command>
 </build>
+
 <build name="Q3Map2: Export to ASE (subdivisions 16)">
 <command>[q3map2] -meta -patchmeta -subdivisions 16 "[MapFile]"</command>
 <command>[q3map2] -convert -format ase -shadersasbitmap "[MapFile]"</command>
 </build>
+
 <build name="Q3Map2: Export to ASE (subdivisions 32)">
 <command>[q3map2] -meta -patchmeta -subdivisions 32 "[MapFile]"</command>
 <command>[q3map2] -convert -format ase -shadersasbitmap "[MapFile]"</command>
@@ -48,26 +54,34 @@ build commands
 <command>[q3map2] -meta -patchmeta -subdivisions 64 "[MapFile]"</command>
 <command>[q3map2] -convert -format ase -shadersasbitmap "[MapFile]"</command>
 </build>
+
 <build name="Q3Map2: Export to ASE (subdivisions 128)">
 <command>[q3map2] -meta -patchmeta -subdivisions 128 "[MapFile]"</command>
 <command>[q3map2] -convert -format ase -shadersasbitmap "[MapFile]"</command>
 </build>
+
 <build name="Q3Map2: Export Lightmap">
 <command>[q3map2] -export "[MapFile]"</command>
 </build>
+
 <build name="Q3Map2: Import Lightmap">
 <command>[q3map2] -import "[MapFile]"</command>
 </build>
+
 <build name="Q3Map2: (single) BSP">
 <command>[q3map2] -meta &quot;[MapFile]&quot;</command>
 </build>
+
 <build name="Q3Map2: (single) VIS">
 <command>[q3map2] -vis &quot;[MapFile]&quot;</command>
 </build>
+
 <build name="Q3Map2: (single) LIGHT -fast">
 <command>[q3map2] -light -fast -fastgrid &quot;[MapFile]&quot;</command>
 </build>
+
 <build name="Q3Map2: make minimap (map must be compiled first)">
 <command>[q3map2] -minimap -size 256 -sharpen 1 -border 0 "[MapFile]"</command>
 </build>
+
 </project>

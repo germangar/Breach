@@ -14,9 +14,9 @@ WORLDSPAWN ENTITY
 Only used for the world.
 -------- KEYS --------
 message : text to print at user logon. Used for name of level.
-music : path/name of looping .wav file used for level's music (eg. music/sonic5.wav).
+music : path/name of looping .wav file used for level's music.
 ambient : Adds a constant value to overall lighting. Use is not recommended. Ambient light will have a tendency to flatten out variations in light and shade.
-_color : RGB value for ambient light color (default is 0 0 0).
+_color : RGB value for ambient light color
 _keeplights : Keep light entities in the BSP. Normally stripped out by the BSP process and read from the .map file by the lighting phase (Warsow needs this to be set to 1!).
 gridsize : granularity of the lightgrid created by q3map. Value is three integers separated by spaces, representing number of units between grid points in X Y Z. Default gridsize value is 128 128 256. Use larger powers of 2 to reduce BSP size and compile time on very large maps.
 _blocksize : q3map always splits the BSP tree along the planes X=_blocksize*n and Y=_blocksize*n. Default _blocksize value is 1024. Increase the blocksize using larger powers of 2 to reduce compile times on very large maps with a low structural brush density.*/
@@ -29,7 +29,7 @@ INFO_* ENTITIES
 //=============================================================================
 
 /*QUAKED info_player_start (1 0 0) (-16 -16 -24) (16 16 40) SUSPENDED
-Player spawn location. Maps must have one of this, even when it's not used in multiplayer games. (updated: 12/08/2005)
+Player spawn location. Maps must have one of this, even when it's not used in multiplayer games
 -------- KEYS --------
 angle : direction in which player will look when spawning in the game.
 target : this can point at a target_give entity for respawn freebies.
@@ -51,7 +51,7 @@ SUSPENDED : the spawnpoint will be placed where it was in the map and won't drop
 //=============================================================================
 
 /*QUAKED info_player_intermission (1 0 1) (-16 -16 -16) (16 16 16)
-Camera for intermission screen between matches. Can be aimed by setting the "angles" key or targeting an pointing to an aiming entity. Use only one per level. (updated: 12/08/2005)
+Camera for intermission screen between matches. Can be aimed by setting the "angles" key or targeting an pointing to an aiming entity. Use only one per level.
 -------- KEYS --------
 angles: sorted as pitch, yaw, roll.
 target : point this to an info_notnull or target_position entity to set the camera's pointing angles.
@@ -61,7 +61,7 @@ Use this entity as the cammera for the scoreboards view at end of matches. If th
 //=============================================================================
 
 /*QUAKED info_null (0 .5 0) (-8 -8 -8) (8 8 8)
-Used as a positional target for light entities to create a spotlight effect. removed during gameplay. (updated: 12/08/2005)
+Used as a positional target for light entities to create a spotlight effect. removed during gameplay
 -------- KEYS --------
 targetname : must match the target key of entity that uses this for pointing.
 -------- NOTES --------
@@ -70,7 +70,7 @@ A target_position can be used instead of this but was kept in for legacy purpose
 //=============================================================================
 
 /*QUAKED info_notnull (0 .5 0) (-8 -8 -8) (8 8 8)
-Used as a positional target for entities that can use directional pointing. Kept during gameplay. (updated: 12/08/2005)
+Used as a positional target for entities that can use directional pointing. Kept during gameplay
 -------- KEYS --------
 targetname : must match the target key of entity that uses this for pointing.
 gametype : list of gametype names in which this entity will be spawned.
@@ -85,7 +85,7 @@ LIGHT ENTITY
 //=============================================================================
 
 /*QUAKED light (.65 .65 1) (-8 -8 -8) (8 8 8) LINEAR_ATTN NOANGLE_ATTN DARK_LIGHT - NO_GRID NO_COLOR_NORMALIZE FORCE_DEFAULT_ATTN
-Non-displayed point light source. (updated: 12/08/2005)
+Non-displayed point light source
 -------- KEYS --------
 light: overrides the default 300 intensity.
 _color : weighted RGB value of light color (default white - 1.0 1.0 1.0).
@@ -114,7 +114,7 @@ FUNC_* ENTITIES
 //=============================================================================
 
 /*QUAKED func_group (0 .5 .8) ?
-This is not an entity as such, it never reachs the game. It is strictly an editor utility to group world brushes and patches together for convenience (selecting, moving, copying, etc). You cannot group entities with this. (updated: 12/08/2005)
+This is not an entity as such, it never reachs the game. It is strictly an editor utility to group world brushes and patches together for convenience (selecting, moving, copying, etc). You cannot group entities with this.
 -------- KEYS --------
 alphamap : this is the path/name for the art file used to guide the mapping of textures on the terrain surface.
 layers : this integer value is the number unique root shaders that will be use on the terrain.
@@ -134,10 +134,11 @@ speed : determines how fast the plat moves (default 300).
 wait : time it spends on end position until goes back to initial position.
 delay : delay before starts moving when activated
 lip : lip remaining at end of move (default 8).
-dmg : damage to inflict on player when he blocks operation of plat (default 0). Plat will reverse direction when blocked.
-targetname : if set, the trigger that points to this will raise the plat each time it fires.
-target : target to fire when activated
+dmg : damage to inflict on player when he blocks operation of plat (default 0). Mover will reverse direction when blocked unless CRUSHER spawnflag is set.targetname : activate this entity from another entity.
+target : target to fire when activated.
+targetname : activate this entity from another entity.
 origin : alternate method of setting XYZ origin of .md3 model included with entity
+gameteam : makes the door only openable by a player of a specific team (0 = everyone, 1 = FFA players, 2 = alpha,  3 = beta)
 gametype : list of gametype names in which this entity will be spawned.
 -------- SPAWNFLAGS --------
 TOGGLE : stays at end position until used again
@@ -153,25 +154,20 @@ TAKEDAMAGE : can receive dmg
 //=============================================================================
 
 /*QUAKED func_door (0 .5 .8) ? TOGGLE REVERSE CRUSHER TAKEDAMAGE DENY_TOUCH_ACTIVATION ALLOW_SHOT_ACTIVATION
-Normal sliding door entity. By default, the door will activate when player walks close to it or when damage is inflicted to it. (updated: 12/08/2005)
+Normal sliding door entity. By default, the door will activate when player walks close to it.
 -------- KEYS --------
 angle : determines the opening direction of door (up = -1, down = -2).
-speed : determines how fast the door moves (default 600).
-wait : number of seconds before door returns (2 default, -1 = never return)
+model2 : path/name of a model to include (eg: models/cooldoor/tris.md3).
+health : health before dying (default 800 if nothing is set).
+speed : default 1200.
+wait : time it spends on end position until goes back to initial position.
+delay : delay before starts moving when activated
 lip : lip remaining at end of move (default 8)
-targetname : if set, a func_button or trigger is required to activate the door.
-target : fire entities with this targetname when activated
-health : (default 0) if set to any non-zero value, the button must take damage (any amount) to activate.
-dmg : damage to inflict on player when he blocks operation of door (default 2). Door will reverse direction when blocked unless CRUSHER spawnflag is set.
-team: assign the same team name to multiple doors that should operate together (see Notes).
-gameteam : makes the door only openable by a player of a specific team (0 = everyone, 1 = FFA players, 2 = alpha,  3 = beta)
-noise_start : overrides default start moving sound
-noise : overrides default movement sound
-noise_stop : overrides default stop moving sound
-light : constantLight radius of .md3 model included with entity. Has no effect on the entity's brushes (default 0).
-color : constantLight color of .md3 model included with entity. Has no effect on the entity's brushes (default 1 1 1).
-model2 : path/name of model to include (eg: models/mapobjects/pipe/pipe02.md3).
+dmg : damage to inflict on player when he blocks operation of plat (default 0). Mover will reverse direction when blocked unless CRUSHER spawnflag is set.
+targetname : activate this entity from another entity.
+target : target to fire when activated.
 origin : alternate method of setting XYZ origin of .md3 model included with entity (See Notes).
+gameteam : makes the door only openable by a player of a specific team (0 = everyone, 1 = FFA players, 2 = alpha,  3 = beta)
 gametype : list of gametype names in which this entity will be spawned.
 -------- SPAWNFLAGS --------
 TOGGLE : stays at end position until used again
@@ -185,37 +181,32 @@ ALLOW_SHOT_ACTIVATION : it is activated when shot
 
 //=============================================================================
 
-/*QUAKED func_door_rotating (0 .5 .8) ? START_OPEN REVERSE CRUSHER NOMONSTER - TOGGLE X_AXIS Y_AXIS
-Door which opens by rotating in one axis. You need to have an origin brush as part of this entity. (updated: 12/08/2005)
+/*QUAKED func_door_rotating (0 .5 .8) ? TOGGLE REVERSE CRUSHER TAKEDAMAGE DENY_TOUCH_ACTIVATION ALLOW_SHOT_ACTIVATION
+Door which opens by rotating in one axis. You need to have an origin brush as part of this entity.
 -------- KEYS --------
-message : is printed when the door is touched if it is a trigger door and it hasn't been fired yet
 distance : is how many degrees the door will be rotated.
-angle : determines the opening direction of door (up = -1, down = -2).
-speed : determines how fast the door moves (default 100).
-wait : wait before returning (3 default, -1 = never return)
-targetname : if set, a func_button or trigger is required to activate the door.
-target : fire entities with this targetname when activated
-health : if set, door must be shot open (default 0).
-dmg : damage to inflict on player when he blocks operation of door (default 2). Door will reverse direction when blocked unless CRUSHER spawnflag is set.
-team: assign the same team name to multiple doors that should operate together.
-noise_start : overrides default start moving sound
-noise : overrides default movement sound
-noise_stop : overrides default stop moving sound
-light : constantLight radius of .md3 model included with entity. Has no effect on the entity's brushes (default 0).
-color : constantLight color of .md3 model included with entity. Has no effect on the entity's brushes (default 1 1 1).
-model2 : path/name of model to include (eg: models/mapobjects/pipe/pipe02.md3).
+angles : determines the opening direction of door (pitch, yaw and roll)
+model2 : path/name of a model to include (eg: models/cooldoor/tris.md3).
+health : health before dying (default 800 if nothing is set).
+speed : default 1200.
+wait : time it spends on end position until goes back to initial position.
+delay : delay before starts moving when activated
+lip : lip remaining at end of move (default 8)
+dmg : damage to inflict on player when he blocks operation of plat (default 0). Mover will reverse direction when blocked unless CRUSHER spawnflag is set.
+targetname : activate this entity from another entity.
+target : target to fire when activated.
 origin : alternate method of setting XYZ origin of .md3 model included with entity (See Notes).
+gameteam : makes the door only openable by a player of a specific team (0 = everyone, 1 = FFA players, 2 = alpha,  3 = beta)
 gametype : list of gametype names in which this entity will be spawned.
 -------- SPAWNFLAGS --------
-START_OPEN : &1 the door will spawn in the open state and operate in reverse.
-REVERSE : &2 will cause the door to rotate in the opposite direction.
-CRUSHER : &4 door will not reverse direction when blocked and will keep damaging player until he dies or gets out of the way.
-NOMONSTER : &8 monsters can't trigger this door.
-TOGGLE : &32 wait in both the start and end states for a trigger event
-X_AXIS : &64 rotate in the X axis
-Y_AXIS : &128 rotate in the Y axis
+TOGGLE : stays at end position until used again
+REVERSE : starts at end position
+CRUSHER : kills at catching the player
+TAKEDAMAGE : can receive dmg
+DENY_TOUCH_ACTIVATION : it isn't activated when touched by the player
+ALLOW_SHOT_ACTIVATION : it is activated when shot
 -------- NOTES --------
-The center of the origin brush determines the point around which it is rotated. It will rotate around the Z axis by default. You can check either the X_AXIS or Y_AXIS box to change that.
+The center of the origin brush determines the point around which it is rotated.
 */
 
 //=============================================================================
@@ -540,3 +531,11 @@ scale : scale the view to make it appear closer or further.
 The entity must be placed in a room which is not connected to the rest of the map.*/
 
 //=============================================================================
+
+/*QUAKED _decal (0 .5 .8) ?
+This is not an entity as such, it never reachs the game. It is strictly an editor utility to project decals surfaces over world brushes
+-------- KEYS --------
+target : To a point entity to set the direction to project.
+-------- NOTES --------
+The _decal entity must contain a patch mesh. Target the _decal entity to a point entity to project the decal.*/
+
