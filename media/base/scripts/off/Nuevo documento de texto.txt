@@ -1,0 +1,82 @@
+
+
+textures_terrain_rock00
+{
+	qer_editorimage textures/terrain/rock00
+	//q3map_lightmapaxis z
+	//q3map_lightmapsamplesize 16
+	//q3map_lightmapSampleOffset 32
+	//q3map_lightmapsamplesize 64
+	//q3map_lightmapSampleOffset 64
+	surfaceparm dust
+
+	q3map_forceMeta
+	q3map_nonPlanar
+	q3map_clipmodel
+	q3map_lightmapMergable
+
+	// lightmap quality settings
+	q3map_lightmapSampleOffset 32
+	q3map_lightmapsamplesize 16
+
+	if deluxe
+
+	{
+		material textures/terrain/rock00
+	}
+	endif
+}
+
+textures_terrain_rock01
+{
+	qer_editorimage textures/terrain/rock01
+	//q3map_lightmapaxis z
+	//q3map_lightmapsamplesize 16
+	//q3map_lightmapSampleOffset 32
+	//q3map_lightmapsamplesize 64
+	//q3map_lightmapSampleOffset 64
+	surfaceparm dust
+
+	q3map_forceMeta
+	q3map_nonPlanar
+	q3map_clipmodel
+	q3map_lightmapMergable
+
+	// lightmap quality settings
+	q3map_lightmapSampleOffset 32
+	q3map_lightmapsamplesize 16
+
+	if deluxe
+
+	{
+		material textures/terrain/rock01
+	}
+	endif
+}
+
+textures_terrain_rock02
+{
+	qer_editorimage textures/terrain/rock02
+	//q3map_lightmapaxis z
+	//q3map_lightmapsamplesize 16
+	//q3map_lightmapSampleOffset 32
+	//q3map_lightmapsamplesize 64
+	//q3map_lightmapSampleOffset 64
+	surfaceparm dust
+
+	q3map_forceMeta
+	q3map_nonPlanar
+	q3map_clipmodel
+	q3map_lightmapMergable
+
+	// lightmap quality settings
+	q3map_lightmapSampleOffset 32
+	q3map_lightmapsamplesize 16
+
+	if deluxe
+
+	{
+		material textures/terrain/rock02
+	}
+	endif
+}
