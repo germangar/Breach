@@ -28,6 +28,7 @@ typedef struct shadowGroup_s
 	image_t				*depthTexture;
 
 	vec3_t				origin;
+	vec3_t 				direction;
 //	int					cluster;
 	qbyte				*vis;
 

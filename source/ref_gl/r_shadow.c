@@ -30,6 +30,8 @@ PLANAR STENCIL SHADOWS
 
 static shader_t *r_planarShadowShader;
 
+#define PLANAR_SHADOW_LIGHT_RADIUS	128
+
 /*
 ===============
 R_InitPlanarShadows
@@ -63,7 +65,7 @@ static void R_GetShadowImpactAndDir( entity_t *e, trace_t *tr, vec3_t lightdir )
 
 	VectorSet( lightdir, -lightdir[0], -lightdir[1], -1 );
 	VectorNormalizeFast( lightdir );
-	VectorMA( e->origin, /*(e->model->radius*e->scale*4 + r_shadows_projection_distance->value)*/ 1024.0f, lightdir, point );
+	VectorMA( e->origin, /*(e->model->radius*e->scale*4 + r_shadows_projection_distance->value)*/ PLANAR_SHADOW_LIGHT_RADIUS, lightdir, point );
 
 	R_TraceLine( tr, e->origin, point, SURF_NONSOLID );
 }
@@ -75,17 +77,20 @@ R_CullPlanarShadow
 */
 qboolean R_CullPlanarShadow( entity_t *e, vec3_t mins, vec3_t maxs, qboolean occlusion_query )
 {
+#if 0
 	int i;
 	float planedist, dist;
 	vec3_t lightdir, point;
 	vec3_t bbox[8], newmins, newmaxs;
 	trace_t tr;
+#endif
 
 	if( e->flags & ( RF_NOSHADOW|RF_WEAPONMODEL ) )
 		return qtrue;
 	if( e->flags & RF_VIEWERMODEL )
 		return qfalse;
 
+#if 0
 	R_GetShadowImpactAndDir( e, &tr, lightdir );
 	if( tr.fraction == 1.0f )
 		return qtrue;
@@ -116,6 +121,10 @@ qboolean R_CullPlanarShadow( entity_t *e, vec3_t mins, vec3_t maxs, qboolean occ
 	if( occlusion_query && OCCLUSION_QUERIES_ENABLED( ri ) )
 		R_IssueOcclusionQuery( R_GetOcclusionQueryNum( OQ_PLANARSHADOW, e - r_entities ), r_worldent, newmins, newmaxs );
 
+#else
+	if( R_CullSphere( e->origin, e->model->radius * e->scale + PLANAR_SHADOW_LIGHT_RADIUS, ri.clipFlags ) )
+		return qtrue;
+#endif
 	return qfalse;
 }
 
@@ -310,7 +319,7 @@ add:
 	VectorSubtract( group->mins, origin, mins );
 	VectorSubtract( group->maxs, origin, maxs );
 	radius = RadiusFromBounds( mins, maxs );
-	group->projDist = max( group->projDist, radius * ent->scale * 2 + min( r_shadows_projection_distance->value, 64 ) );
+	group->projDist = max( group->projDist, radius * ent->scale * 2 + min( r_shadows_projection_distance->value, 256 ) );
 
 	return qtrue;
 }
@@ -471,8 +480,9 @@ void R_DrawShadowmaps( void )
 
 		// set the view transformation matrix according to lightgrid
 		R_LightForOrigin( group->origin, lightdir, ambient, NULL, group->projDist * 0.5 );
-		VectorSet( lightdir, -lightdir[0], -lightdir[1], -lightdir[2] );
+		VectorSet( lightdir, -lightdir[0], -lightdir[1], -lightdir[2] - 0.5 );
 		VectorNormalizeFast( lightdir );
+		VectorCopy( lightdir, group->direction );
 
 		// view axis are expected to be FLU (forward left up)
 		NormalVectorToAxis( lightdir, ri.refdef.viewaxis );

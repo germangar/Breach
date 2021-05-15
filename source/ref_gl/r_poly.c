@@ -41,7 +41,7 @@ void R_PushPoly( const meshbuffer_t *mb )
 	features = shader->features | MF_TRIFAN;
 	for( i = -mb->infokey-1, p = r_polys + i; i < mb->lastPoly; i++, p++ )
 	{
-		poly_mesh.numVertexes = p->numverts;
+		poly_mesh.numVerts = p->numverts;
 		poly_mesh.xyzArray = inVertsArray;
 		poly_mesh.normalsArray = inNormalsArray;
 		poly_mesh.stArray = p->stcoords;
@@ -51,7 +51,7 @@ void R_PushPoly( const meshbuffer_t *mb )
 			Vector4Set( inVertsArray[r_backacc.numVerts+j], p->verts[j][0], p->verts[j][1], p->verts[j][2], 1 );
 			VectorCopy( p->normal, inNormalsArray[r_backacc.numVerts+j] );
 		}
-		R_PushMesh( &poly_mesh, features );
+		R_PushMesh( NULL, &poly_mesh, features );
 	}
 }
 
@@ -100,7 +100,7 @@ void R_AddPolysToList( void )
 			lastFog = fog;
 			VectorCopy( p->normal, lastNormal );
 
-			mb = R_AddMeshToList( MB_POLY, fog, shader, -( (signed int)i+1 ) );
+			mb = R_AddMeshToList( MB_POLY, fog, shader, -( (signed int)i+1 ), NULL, 0, 0 );
 			mb->lastPoly = i;
 		}
 	}
@@ -721,7 +721,7 @@ loc0:
 		node = node->children[0];
 		goto loc0;
 	}
-	
+
 	if( t1 < ON_EPSILON && t2 < ON_EPSILON )
 	{
 		node = node->children[1];
@@ -814,7 +814,7 @@ msurface_t *R_TransformedTraceLine( trace_t *tr, const vec3_t start, const vec3_
 		tr->surfFlags = trace_surface->flags;
 		tr->ent = test - r_entities;
 	}
-	
+
 	tr->fraction = trace_fraction;
 	VectorCopy( trace_impact, tr->endpos );
 

@@ -652,7 +652,7 @@ static int LoadTGA( const char *name, qbyte **pic, int *width, int *height, int 
 {
 	int i, columns, rows, row_inc, row, col;
 	qbyte *buf_p, *buffer, *pixbuf, *targa_rgba;
-	int length, samples, readpixelcount, pixelcount;
+	int samples, readpixelcount, pixelcount;
 	qbyte palette[256][4], red = 0, green = 0, blue = 0, alpha = 0;
 	qboolean compressed;
 	TargaHeader targa_header;
@@ -663,7 +663,7 @@ static int LoadTGA( const char *name, qbyte **pic, int *width, int *height, int 
 	//
 	// load the file
 	//
-	length = FS_LoadFile( name, (void **)&buffer, stack, sizeof( stack ) );
+	FS_LoadFile( name, (void **)&buffer, stack, sizeof( stack ) );
 	if( !buffer )
 		return 0;
 
@@ -924,7 +924,7 @@ static void jpg_skip_input_data( j_decompress_ptr cinfo, long num_bytes )
 	cinfo->src->bytes_in_buffer -= (size_t) num_bytes;
 }
 
-static void jpeg_mem_src( j_decompress_ptr cinfo, qbyte *mem, int len )
+void jpeg_mem_src( j_decompress_ptr cinfo, unsigned char *mem, unsigned long len )
 {
 	cinfo->src = (struct jpeg_source_mgr *)
 		( *cinfo->mem->alloc_small )( (j_common_ptr) cinfo,
@@ -1222,7 +1222,7 @@ LoadWAL
 */
 static int LoadWAL( const char *name, qbyte **pic, int *width, int *height, int side )
 {
-	unsigned int i, length;
+	unsigned int i;
 	unsigned int p, s, *trans;
 	unsigned int rows, columns;
 	int samples = 3;
@@ -1237,7 +1237,7 @@ static int LoadWAL( const char *name, qbyte **pic, int *width, int *height, int 
 	d_8to24table = R_GetPalette( IT_WAL );
 
 	// load the file
-	length = FS_LoadFile( name, (void **)&buffer, stack, sizeof( stack ) );
+	FS_LoadFile( name, (void **)&buffer, stack, sizeof( stack ) );
 	if( !buffer )
 		return 0;
 
@@ -1460,7 +1460,7 @@ R_MergeNormalmapDepthmap
 static int R_MergeNormalmapDepthmap( const char *pathname, qbyte *in, int iwidth, int iheight )
 {
 	const char *p;
-	int width, height, samples;
+	int width, height;
 	qbyte *pic, *pic2;
 	char *depthName;
 	size_t depthNameSize;
@@ -1477,7 +1477,7 @@ static int R_MergeNormalmapDepthmap( const char *pathname, qbyte *in, int iwidth
 	Q_strncpyz( depthName + (p - pathname), "_depth", depthNameSize - (p - pathname) );
 
 	pic = NULL;
-	samples = R_LoadImageFromDisk( depthName, depthNameSize, &pic, &width, &height, NULL, 1 );
+	R_LoadImageFromDisk( depthName, depthNameSize, &pic, &width, &height, NULL, 1 );
 
 	if( pic )
 	{
@@ -2196,7 +2196,7 @@ R_ScreenShot
 static void R_ScreenShot( const char *name, qboolean silent )
 {
 	char *checkname = NULL;
-	size_t checkname_size;
+	size_t checkname_size = 0, gamepath_offset = 0;
 	qbyte *buffer;
 
 	if( name && name[0] && Q_stricmp(name, "*") )
@@ -2225,29 +2225,77 @@ static void R_ScreenShot( const char *name, qboolean silent )
 	//
 	if( !checkname )
 	{
+		int i;
+		const int maxFiles = 100000;
 		static int lastIndex = 0;
+		qboolean addIndex = qfalse;
+		time_t timestamp;
+		char timestamp_str[MAX_QPATH];
+		struct tm *timestampptr;
 
-		checkname_size = sizeof( char ) * ( strlen( "screenshots/wsw" ) + 5 + strlen( ".jpg" ) + 1 );
-		checkname = Mem_TempMalloc( checkname_size );
+		timestamp = time( NULL );
+		timestampptr = localtime( &timestamp );
 
-		// force a rescan
-		if( r_screenshot_jpeg->modified )
+		// validate timestamp string
+		for( i = 0; i < 2; i++ )
 		{
-			lastIndex = 0;
-			r_screenshot_jpeg->modified = qfalse;
+			strftime( timestamp_str, sizeof( timestamp_str ), r_screenshot_fmtstr->string, timestampptr );
+			if( !COM_ValidateRelativeFilename( timestamp_str ) )
+				Cvar_ForceSet( r_screenshot_fmtstr->name, r_screenshot_fmtstr->dvalue );
+			else
+				break;
 		}
 
-		for( ; lastIndex < 100000; lastIndex++ )
+		// hm... shouldn't really happen, but check anyway
+		if( i == 2 )
 		{
-			if( r_screenshot_jpeg->integer )
-				Q_snprintfz( checkname, checkname_size, "screenshots/wsw%05i.jpg", lastIndex );
-			else
-				Q_snprintfz( checkname, checkname_size, "screenshots/wsw%05i.tga", lastIndex );
-			if( FS_FOpenFile( checkname, NULL, FS_READ ) == -1 )
+			Q_strncpyz( timestamp_str, APP_SCREENSHOTS_PREFIX, sizeof( timestamp_str ) );
+			Cvar_ForceSet( r_screenshot_fmtstr->name, APP_SCREENSHOTS_PREFIX );
+		}
+
+		gamepath_offset = strlen( FS_WriteDirectory() ) + 1 + strlen( FS_GameDirectory() ) + 1;
+
+		checkname_size =
+			sizeof( char ) * ( gamepath_offset + strlen( "screenshots/" ) + strlen( timestamp_str ) + 5 + strlen( ".jpg" ) + 1 );
+		checkname = Mem_TempMalloc( checkname_size );
+
+		// if the string format is a constant or file already exists then iterate
+		if( !*timestamp_str || !strcmp( timestamp_str, r_screenshot_fmtstr->string ) )
+		{
+			addIndex = qtrue;
+
+			// force a rescan in case some vars have changed..
+			if( r_screenshot_fmtstr->modified )
+			{
+				lastIndex = 0;
+				r_screenshot_fmtstr->modified = qtrue;
+			}
+			if( r_screenshot_jpeg->modified )
+			{
+				lastIndex = 0;
+				r_screenshot_jpeg->modified = qfalse;
+			}
+		}
+		else
+		{
+			Q_snprintfz( checkname, checkname_size, "%s/%s/screenshots/%s.%s", 
+				FS_WriteDirectory(), FS_GameDirectory(), timestamp_str, r_screenshot_jpeg->integer ? "jpg" : "tga" );
+			if( FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) != -1 )
+			{
+				lastIndex = 0;
+				addIndex = qtrue;
+			}
+		}
+
+		for( ; addIndex && lastIndex < maxFiles; lastIndex++ )
+		{
+			Q_snprintfz( checkname, checkname_size, "%s/%s/screenshots/%s%05i.%s", 
+				FS_WriteDirectory(), FS_GameDirectory(), timestamp_str, lastIndex, r_screenshot_jpeg->integer ? "jpg" : "tga" );
+			if( FS_FOpenAbsoluteFile( checkname, NULL, FS_READ ) == -1 )
 				break; // file doesn't exist
 		}
 
-		if( lastIndex == 100000 )
+		if( lastIndex == maxFiles )
 		{
 			Com_Printf( "Couldn't create a file\n" );
 			Mem_Free( checkname );
@@ -2262,7 +2310,7 @@ static void R_ScreenShot( const char *name, qboolean silent )
 		buffer = Mem_Alloc( r_texturesPool, glState.width * glState.height * 3 );
 		qglReadPixels( 0, 0, glState.width, glState.height, GL_RGB, GL_UNSIGNED_BYTE, buffer );
 
-		if( WriteJPG( checkname, buffer, glState.width, glState.height, r_screenshot_jpeg_quality->integer ) && !silent )
+		if( WriteJPG( checkname + gamepath_offset, buffer, glState.width, glState.height, r_screenshot_jpeg_quality->integer ) && !silent )
 			Com_Printf( "Wrote %s\n", checkname );
 	}
 	else
@@ -2270,7 +2318,7 @@ static void R_ScreenShot( const char *name, qboolean silent )
 		buffer = Mem_Alloc( r_texturesPool, 18 + glState.width * glState.height * 3 );
 		qglReadPixels( 0, 0, glState.width, glState.height, glConfig.ext.bgra ? GL_BGR_EXT : GL_RGB, GL_UNSIGNED_BYTE, buffer + 18 );
 
-		if( WriteTGA( checkname, buffer, glState.width, glState.height, glConfig.ext.bgra ) && !silent )
+		if( WriteTGA( checkname + gamepath_offset, buffer, glState.width, glState.height, glConfig.ext.bgra ) && !silent )
 			Com_Printf( "Wrote %s\n", checkname );
 	}
 
@@ -2626,10 +2674,10 @@ static qbyte *R_InitBlankBumpTexture( int *w, int *h, int *depth, int *flags, in
 	qbyte *data = R_InitSolidColorTexture( w, h, depth, flags, samples, 128 );
 
 /*
-	data[2] = 128;	// normal X
+	data[0] = 128;	// normal X
 	data[1] = 128;	// normal Y
 */
-	data[0] = 255;	// normal Z
+	data[2] = 255;	// normal Z
 	data[3] = 128;	// height
 
 	return data;
@@ -2654,7 +2702,7 @@ static qbyte *R_InitFogTexture( int *w, int *h, int *depth, int *flags, int *sam
 	*w = FOG_TEXTURE_WIDTH;
 	*h = FOG_TEXTURE_HEIGHT;
 	*depth = 1;
-	*flags = IT_NOMIPMAP|IT_CLAMP;
+	*flags = IT_NOPICMIP|IT_NOMIPMAP|IT_CLAMP;
 	*samples = 4;
 
 	data = R_PrepareImageBuffer( TEXTURE_LOADING_BUF0, FOG_TEXTURE_WIDTH*FOG_TEXTURE_HEIGHT*4 );
@@ -2906,6 +2954,10 @@ R_InitImages
 */
 void R_InitImages( void )
 {
+	// allow any alignment
+	qglPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	qglPixelStorei(GL_PACK_ALIGNMENT, 1);
+
 	r_texturesPool = Mem_AllocPool( NULL, "Textures" );
 	image_cur_hash = IMAGES_HASH_SIZE+1;
 

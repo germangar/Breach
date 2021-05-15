@@ -78,7 +78,7 @@ static shader_t *loadmodel_skyshader;
 
 static q2mnodefaceinfo_t *loadmodel_nodefaceinfo;
 
-static qbyte *loadmodel_lightdata;	
+static qbyte *loadmodel_lightdata;
 static int loadmodel_lightdatasize;
 
 static mlightmapRect_t *loadmodel_lightmapRects;
@@ -316,7 +316,7 @@ static void Mod_CalcSurfaceExtents( q2msurface_t *s )
 	}
 
 	for( i = 0; i < 2; i++ )
-	{	
+	{
 		bmins[i] = floor( mins[i] / 16 );
 		bmaxs[i] = ceil( maxs[i] / 16 );
 
@@ -372,7 +372,7 @@ static qboolean Mod_GetWALInfo( q2mtexinfo_t *texinfo )
 		size = FS_FOpenFile( texture, &file, FS_READ );
 		if( size > 0 && size > sizeof( miptex ) )
 		{
-			FS_Seek( file, (int)&( ( (q2miptex_t *)0 )->width ), FS_SEEK_SET );
+			FS_Seek( file, (size_t)&( ( (q2miptex_t *)0 )->width ), FS_SEEK_SET );
 			FS_Read( &miptex.width, sizeof( miptex.width ), file );
 			FS_Read( &miptex.height, sizeof( miptex.height ), file );
 			FS_FCloseFile( file );
@@ -425,9 +425,9 @@ static mesh_t *Mod_BuildMeshForSurface( q2msurface_t *fa )
 		bufSize += numVerts * sizeof( byte_vec4_t );
 
 	buffer = ( qbyte * )Mod_Malloc( loadmodel, bufSize );
-	
+
 	mesh = ( mesh_t * )buffer; buffer += sizeof( mesh_t );
-	mesh->numVertexes = numVerts;
+	mesh->numVerts = numVerts;
 	mesh->numElems = numElems;
 
 	mesh->xyzArray = ( vec4_t * )buffer; buffer += numVerts * sizeof( vec4_t );
@@ -498,13 +498,13 @@ static mesh_t *Mod_BuildMeshForSurface( q2msurface_t *fa )
 			mesh->lmstArray[j][i][0] = s;
 			mesh->lmstArray[j][i][1] = t;
 		}
-			
+
 		// vertex colors
 		if( !r_fullbright->integer )
 		{
 			int			ds, dt;
 			qbyte		*lightmap;
-			const float	cscale = (1.0 / 255.0) * (1 << mapConfig.overbrightBits);
+			const float cscale = ( 1 << mapConfig.overbrightBits ) * (mapConfig.lightingIntensity ? mapConfig.lightingIntensity : 1.0f) / 255.0f;
 
 			ds = base_s;
 			dt = base_t;
@@ -519,12 +519,12 @@ static mesh_t *Mod_BuildMeshForSurface( q2msurface_t *fa )
 
 				VectorSet( c1,
 					lightmap[0] * cscale,
-					lightmap[1] * cscale, 
+					lightmap[1] * cscale,
 					lightmap[2] * cscale );
 				ColorNormalize( c1, c2 );
 
-				Vector4Set( mesh->colorsArray[j][i], 
-					( qbyte )( c2[0] * 255 ), 
+				Vector4Set( mesh->colorsArray[j][i],
+					( qbyte )( c2[0] * 255 ),
 					( qbyte )( c2[1] * 255 ),
 					( qbyte )( c2[2] * 255 ), 255 );
 
@@ -711,9 +711,9 @@ static mesh_t *Mod_BuildMeshForWarpSurface( q2msurface_t *fa )
 	bufSize += numElems * sizeof( elem_t );
 
 	buffer = ( qbyte * )Mod_Malloc( loadmodel, bufSize );
-	
+
 	mesh = ( mesh_t * )buffer; buffer += sizeof( mesh_t );
-	mesh->numVertexes = 0;
+	mesh->numVerts = 0;
 	mesh->numElems = 0;
 
 	mesh->xyzArray = ( vec4_t * )buffer; buffer += numVerts * sizeof( vec4_t );
@@ -738,7 +738,7 @@ static mesh_t *Mod_BuildMeshForWarpSurface( q2msurface_t *fa )
 		for( i = 0; i < poly->numverts; i++ )
 		{
 			vec = poly->verts[i];
-			VectorCopy( vec, mesh->xyzArray[mesh->numVertexes+i+1] );
+			VectorCopy( vec, mesh->xyzArray[mesh->numVerts+i+1] );
 			s = DotProduct( vec, fa->texinfo->vecs[0] );
 			t = DotProduct( vec, fa->texinfo->vecs[1] );
 
@@ -749,28 +749,28 @@ static mesh_t *Mod_BuildMeshForWarpSurface( q2msurface_t *fa )
 			total_t += t;
 			VectorAdd( total, vec, total );
 
-			mesh->stArray[mesh->numVertexes+i+1][0] = s;
-			mesh->stArray[mesh->numVertexes+i+1][1] = t;
+			mesh->stArray[mesh->numVerts+i+1][0] = s;
+			mesh->stArray[mesh->numVerts+i+1][1] = t;
 		}
 
-		VectorScale( total, (1.0/poly->numverts), mesh->xyzArray[mesh->numVertexes+0] );
-		mesh->stArray[mesh->numVertexes+0][0] = total_s/poly->numverts;
-		mesh->stArray[mesh->numVertexes+0][1] = total_t/poly->numverts;
+		VectorScale( total, (1.0/poly->numverts), mesh->xyzArray[mesh->numVerts+0] );
+		mesh->stArray[mesh->numVerts+0][0] = total_s/poly->numverts;
+		mesh->stArray[mesh->numVerts+0][1] = total_t/poly->numverts;
 
 		// copy first vertex to last
-		VectorCopy( mesh->xyzArray[mesh->numVertexes+1], mesh->xyzArray[mesh->numVertexes+i+1] );
-		Vector2Copy( mesh->stArray[mesh->numVertexes+1], mesh->stArray[mesh->numVertexes+i+1] );
+		VectorCopy( mesh->xyzArray[mesh->numVerts+1], mesh->xyzArray[mesh->numVerts+i+1] );
+		Vector2Copy( mesh->stArray[mesh->numVerts+1], mesh->stArray[mesh->numVerts+i+1] );
 
 		// build trifan indexes
 		elems = mesh->elems + mesh->numElems;
 		for( i = 2; i < poly->numverts + 2; i++, elems += 3 )
 		{
-			elems[0] = mesh->numVertexes;
-			elems[1] = mesh->numVertexes + i - 1;
-			elems[2] = mesh->numVertexes + i;
+			elems[0] = mesh->numVerts;
+			elems[1] = mesh->numVerts + i - 1;
+			elems[2] = mesh->numVerts + i;
 		}
 
-		mesh->numVertexes += poly->numverts + 2;
+		mesh->numVerts += poly->numverts + 2;
 		mesh->numElems += (poly->numverts + 2 - 2) * 3;
 
 		Mem_Free( poly );
@@ -839,7 +839,7 @@ static void Mod_ApplySuperStylesToFace( const q2msurface_t *in, msurface_t *out 
 			{
 				mesh = out->mesh;
 				lmArray = mesh->lmstArray[j][0];
-				for( k = 0; k < mesh->numVertexes; k++, lmArray += 2 )
+				for( k = 0; k < mesh->numVerts; k++, lmArray += 2 )
 				{
 					lmArray[0] = (double)( lmArray[0] ) * lmRects[j]->texMatrix[0][0] + lmRects[j]->texMatrix[0][1];
 					lmArray[1] = (double)( lmArray[1] ) * lmRects[j]->texMatrix[1][0] + lmRects[j]->texMatrix[1][1];
@@ -883,7 +883,7 @@ static void Mod_CreateFaces( void )
 		if( !Mod_GetWALInfo( in->texinfo ) )
 			continue;
 
-		if( in->texinfo->flags & Q2_SURF_WARP ) 
+		if( in->texinfo->flags & Q2_SURF_WARP )
 			out->mesh = Mod_BuildMeshForWarpSurface( in );
 		else
 			out->mesh = Mod_BuildMeshForSurface( in );
@@ -899,7 +899,7 @@ LIGHT SAMPLING
 =============================================================================
 */
 
-static qboolean Mod_RecursiveLightPoint_r( mnode_t *node, vec3_t start, vec3_t end, vec3_t lightpoint, int *lightindex )
+static qboolean Mod_RecursiveLightPoint_r( mnode_t *node, vec3_t start, vec3_t end, vec3_t lightpoint, size_t *lightindex )
 {
 	int				i;
 	int				nodenum;
@@ -946,7 +946,7 @@ static qboolean Mod_RecursiveLightPoint_r( mnode_t *node, vec3_t start, vec3_t e
 		tex = surf->texinfo;
 		if( tex->flags & (Q2_SURF_WARP|Q2_SURF_SKY) )
 			continue;	// no lightmaps
-		
+
 		ds = DotProduct( mid, tex->vecs[0] ) + tex->vecs[0][3];
 		if( ds < surf->texturemins[0])
 			continue;
@@ -1030,10 +1030,10 @@ static qboolean Mod_RecursiveLightPoint_r( mnode_t *node, vec3_t start, vec3_t e
 Mod_RecursiveLightPoint
 =================
 */
-static int Mod_RecursiveLightPoint( vec3_t start, vec3_t lightpoint )
+static size_t Mod_RecursiveLightPoint( vec3_t start, vec3_t lightpoint )
 {
 	vec3_t	end;
-	int		lightindex;
+	size_t	lightindex;
 
 	end[0] = start[0];
 	end[1] = start[1];
@@ -1071,7 +1071,7 @@ static void Mod_TraceLightGrid( void )
 	int j, num, mod;
 	int x, y, z;
 	int numPoints;
-	int lightindex;
+	size_t lightindex;
 	vec3_t start, end;
 	vec_t *gridMins, *gridSize;
 	int *gridBounds;
@@ -1106,19 +1106,20 @@ static void Mod_TraceLightGrid( void )
 		// find a valid starting point
 		if( Mod_PointCluster( start ) < 0 )
 		{
-			int i, step;
+			int i;
+			vec_t step;
 			vec3_t base;
 
 			// nudge around
 			VectorCopy( start, base );
 			for( i = 1; i <= 2; i++ )
 			{
-				step = i * 9;
+				step = i * 9.0f;
 				for( j = 0; j < 8; j++ )
 				{
-					start[0] = base[0] + ( j & 1 ) ? step : -step;
-					start[1] = base[1] + ( j & 2 ) ? step : -step;
-					start[2] = base[2] + ( j & 4 ) ? step : -step;
+					start[0] = base[0] + (( j & 1 ) ? step : -step);
+					start[1] = base[1] + (( j & 2 ) ? step : -step);
+					start[2] = base[2] + (( j & 4 ) ? step : -step);
 					if( Mod_PointCluster( start ) >= 0 )
 						break;
 				}
@@ -1134,7 +1135,7 @@ static void Mod_TraceLightGrid( void )
 
 		// trace
 		lightindex = Mod_RecursiveLightPoint( start, end );
-		
+
 		// copy this grid element all the way down until we hit the light point
 		z = start[2] - end[2];
 		z /= gridSize[2];
@@ -1394,7 +1395,7 @@ static void Mod_Q2LoadPlanes( const lump_t *l )
 	cplane_t	*out;
 	q2dplane_t 	*in;
 	int			count;
-	
+
 	in = ( void * )( mod_base + l->fileofs );
 	if( l->filelen % sizeof( *in ) )
 		Com_Error( ERR_DROP, "Mod_Q2LoadPlanes: funny lump size in %s", loadmodel->name );
@@ -1638,7 +1639,7 @@ static void Mod_Q2LoadFaces( const lump_t *l )
 		// lighting info
 		for( j = 0; j < Q2_MAX_LIGHTMAPS; j++ )
 		{
-			out->styles[j] = in->styles[j];
+			out->styles[j] = (r_fullbright->integer ? (j ? 255 : 0) : in->styles[j]);
 			out->lightmapnum[j] = -1;
 		}
 		for( ; j < MAX_LIGHTMAPS; j++ )
@@ -1757,10 +1758,10 @@ Mod_Q2LoadSurfedges
 =================
 */
 static void Mod_Q2LoadSurfedges( const lump_t *l )
-{	
+{
 	int		i, count;
 	int		*in, *out;
-	
+
 	in = ( void * )( mod_base + l->fileofs );
 	if( l->filelen % sizeof( *in ) )
 		Com_Error( ERR_DROP, "Mod_Q2LoadSurfedges: funny lump size in %s", loadmodel->name );
@@ -1823,7 +1824,7 @@ static void Mod_Q2LoadLeafs( const lump_t *l, const lump_t *msLump )
 			Com_DPrintf( S_COLOR_YELLOW "WARNING: bad leaf bounds\n" );
 			out->cluster = -1;
 		}
-	
+
 		if( loadbmodel->pvs && ( out->cluster >= loadbmodel->pvs->numclusters ) )
 		{
 			Com_Printf( S_COLOR_YELLOW "WARNING: leaf cluster > numclusters" );
@@ -2120,7 +2121,7 @@ static void Mod_Q1LoadPlanes( const lump_t *l )
 	cplane_t	*out;
 	q1dplane_t 	*in;
 	int			count;
-	
+
 	in = ( void * )( mod_base + l->fileofs );
 	if( l->filelen % sizeof( *in ) )
 		Com_Error( ERR_DROP, "Mod_Q1LoadPlanes: funny lump size in %s", loadmodel->name );
@@ -2239,7 +2240,7 @@ static void Mod_Q1FixUpMiptexShader( q1mmiptex_t *miptex )
 		for( j = basepass; j < shader->numpasses; j++, pass++ )
 		{
 			data = miptex->texdata;
-			pass->anim_frames[0] = R_LoadPic( miptex->texture, &data, miptex->width, miptex->height, 
+			pass->anim_frames[0] = R_LoadPic( miptex->texture, &data, miptex->width, miptex->height,
 				IT_MIPTEX|IT_SKY|(j > basepass ? IT_LEFTHALF : IT_RIGHTHALF), 1 );
 		}
 	}
@@ -2256,7 +2257,7 @@ static void Mod_Q1FixUpMiptexShader( q1mmiptex_t *miptex )
 					continue;
 
 				data = step->texdata;
-				pass->anim_frames[k] = R_LoadPic( step->texture, &data, step->width, step->height, 
+				pass->anim_frames[k] = R_LoadPic( step->texture, &data, step->width, step->height,
 					IT_MIPTEX|(j > basepass && miptex->fullbrights ? IT_MIPTEX_FULLBRIGHT : 0), 1 );
 			}
 		}
@@ -2388,9 +2389,6 @@ static void Mod_Q1LoadMiptex( const lump_t *l )
 		shadertext = NULL;
 		if( out->numframes > 1 || ( out->flags & (Q2_SURF_WARP|Q2_SURF_SKY) ) || out->fullbrights )
 		{
-			qboolean base;
-
-			base = qtrue;
 			shadertext = rawtext;
 
 			Q_strncpyz( rawtext, "{\n", sizeof( rawtext ) );
@@ -2547,7 +2545,7 @@ static void Mod_Q1LoadFaces( const lump_t *l )
 		// lighting info
 		for( j = 0; j < Q1_MAX_LIGHTMAPS; j++ )
 		{
-			out->styles[j] = in->styles[j];
+			out->styles[j] = (r_fullbright->integer ? (j ? 255 : 0) : in->styles[j]);
 			out->lightmapnum[j] = -1;
 		}
 		for( ; j < MAX_LIGHTMAPS; j++ )
@@ -2667,10 +2665,10 @@ Mod_Q1LoadSurfedges
 =================
 */
 static void Mod_Q1LoadSurfedges( const lump_t *l )
-{	
+{
 	int		i, count;
 	int		*in, *out;
-	
+
 	in = ( void * )( mod_base + l->fileofs );
 	if( l->filelen % sizeof( *in ) )
 		Com_Error( ERR_DROP, "Mod_Q1LoadSurfedges: funny lump size in %s", loadmodel->name );
@@ -2778,7 +2776,7 @@ static void Mod_Q1LoadLeafs( const lump_t *l, const lump_t *msLump, int numvisle
 		}
 	}
 
-	loadbmodel->numareas = out->area + 1;
+	loadbmodel->numareas = 1;
 }
 
 /*

@@ -42,10 +42,10 @@ R_SurfPotentiallyVisible
 */
 qboolean R_SurfPotentiallyVisible( msurface_t *surf )
 {
-	if( surf->facetype == FACETYPE_FLARE )
-		return qtrue;
 	if( surf->flags & SURF_NODRAW )
 		return qfalse;
+	if( surf->facetype == FACETYPE_FLARE )
+		return qtrue;
 	if( !surf->mesh || R_InvalidMesh( surf->mesh ) )
 		return qfalse;
 	return qtrue;
@@ -64,6 +64,8 @@ qboolean R_CullSurface( msurface_t *surf, unsigned int clipflags )
 		return qtrue;
 	if( r_nocull->integer )
 		return qfalse;
+	if( ( shader->flags & SHADER_ALLDETAIL ) && !r_detailtextures->integer )
+		return qtrue;
 
 	// flare
 	if( surf->facetype == FACETYPE_FLARE )
@@ -163,6 +165,8 @@ static meshbuffer_t *R_AddSurfaceToList( msurface_t *surf, unsigned int clipflag
 {
 	shader_t *shader;
 	meshbuffer_t *mb;
+	mesh_vbo_t *vbo;
+	msurface_t *vbo_surf;
 
 	if( R_CullSurface( surf, clipflags ) )
 		return NULL;
@@ -173,7 +177,8 @@ static meshbuffer_t *R_AddSurfaceToList( msurface_t *surf, unsigned int clipflag
 		qboolean vis = R_AddSkySurface( surf );
 		if( vis )
 		{
-			R_AddMeshToList( MB_MODEL, surf->fog, shader, surf - r_worldbrushmodel->surfaces + 1 );
+			R_AddMeshToList( MB_MODEL, surf->fog, shader, surf - r_worldbrushmodel->surfaces + 1,
+				surf->mesh, surf->numVertexes, surf->numElems );
 			ri.params &= ~RP_NOSKY;
 		}
 		return NULL;
@@ -188,8 +193,39 @@ static meshbuffer_t *R_AddSurfaceToList( msurface_t *surf, unsigned int clipflag
 	}
 
 	c_brush_polys++;
+
+	vbo = surf->vbo;
+	vbo_surf = vbo ? ( msurface_t * )vbo->owner : NULL;
+
+	if( vbo )
+	{
+		mb = ri.meshlist->surfmbuffers[vbo_surf - r_worldbrushmodel->surfaces];
+		if( mb )
+		{
+			ri.meshlist->surfmbuffers[surf - r_worldbrushmodel->surfaces] = mb;
+			return mb;
+		}
+	}
+
 	mb = R_AddMeshToList( surf->facetype == FACETYPE_FLARE ? MB_SPRITE : MB_MODEL,
-		surf->fog, shader, surf - r_worldbrushmodel->surfaces + 1 );
+		surf->fog, shader, surf - r_worldbrushmodel->surfaces + 1,
+		surf->mesh, surf->numVertexes, surf->numElems );
+
+	if( mb )
+	{
+		mb->sortkey |= ( ( surf->superLightStyle+1 ) << 10 );
+
+		if( vbo )
+		{
+			mb->vbo = vbo;
+			ri.meshlist->surfmbuffers[vbo_surf - r_worldbrushmodel->surfaces] = mb;
+			c_world_vbos++;
+		}
+
+		c_world_verts += surf->numVertexes;
+		c_world_tris += surf->numElems / 3;
+	}
+
 	ri.meshlist->surfmbuffers[surf - r_worldbrushmodel->surfaces] = mb;
 	return mb;
 }
@@ -261,7 +297,6 @@ void R_AddBrushModelToList( entity_t *e )
 		mb = R_AddSurfaceToList( psurf, 0 );
 		if( mb )
 		{
-			mb->sortkey |= ( ( psurf->superLightStyle+1 ) << 10 );
 			if( R_SurfPotentiallyLit( psurf ) )
 				mb->dlightbits = dlightbits;
 		}
@@ -297,12 +332,14 @@ static void R_MarkLeafSurfaces( msurface_t **mark, unsigned int clipflags, unsig
 		{
 			surf->visframe = r_framecount;
 			mb = R_AddSurfaceToList( surf, clipflags );
-			if( mb )
-				mb->sortkey |= ( ( surf->superLightStyle+1 ) << 10 );
+		}
+		else if( dlightbits )
+		{
+			mb = ri.meshlist->surfmbuffers[surf - r_worldbrushmodel->surfaces];
 		}
 		else
 		{
-			mb = ri.meshlist->surfmbuffers[surf - r_worldbrushmodel->surfaces];
+			continue;
 		}
 
 		newDlightbits = mb ? dlightbits & ~mb->dlightbits : 0;
@@ -561,9 +598,6 @@ void R_DrawWorld( void )
 		ri.currententity->outlineHeight = 0;
 	Vector4Copy( mapConfig.outlineColor, ri.currententity->outlineColor );
 #endif
-
-	if( (ri.params & RP_CLIPPLANE) && !(ri.params & RP_NONVIEWERREF) )
-		Com_Printf( "WTF\n" );
 
 	if( !( ri.params & RP_SHADOWMAPVIEW ) )
 	{

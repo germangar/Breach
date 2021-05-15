@@ -79,7 +79,7 @@ typedef struct image_s
 	int				flags;
 	GLuint			texnum;						// gl texture binding
 	int				width, height, depth;		// source image
-	int				upload_width, 
+	int				upload_width,
 					upload_height,
 					upload_depth;				// after power of two and picmip
 	int				samples;
@@ -241,7 +241,7 @@ extern image_t *r_shadowmapTextures[];
 
 extern unsigned int r_pvsframecount;
 extern unsigned int r_framecount;
-extern unsigned int c_brush_polys, c_world_leafs;
+extern unsigned int c_brush_polys, c_world_leafs, c_world_verts, c_world_tris, c_world_vbos;
 
 extern unsigned int r_mark_leaves, r_world_node;
 extern unsigned int r_add_polys, r_add_entities;
@@ -325,6 +325,7 @@ extern cvar_t *r_lighting_packlightmaps;
 extern cvar_t *r_lighting_maxlmblocksize;
 extern cvar_t *r_lighting_additivedlights;
 extern cvar_t *r_lighting_vertexlight;
+extern cvar_t *r_lighting_maxglsldlights;
 
 extern cvar_t *r_offsetmapping;
 extern cvar_t *r_offsetmapping_scale;
@@ -370,9 +371,12 @@ extern cvar_t *r_skymip;
 extern cvar_t *r_clear;
 extern cvar_t *r_polyblend;
 extern cvar_t *r_lockpvs;
+extern cvar_t *r_screenshot_fmtstr;
 extern cvar_t *r_screenshot_jpeg;
 extern cvar_t *r_screenshot_jpeg_quality;
 extern cvar_t *r_swapinterval;
+
+extern cvar_t *r_temp1;
 
 extern cvar_t *gl_finish;
 extern cvar_t *gl_delayfinish;
@@ -491,6 +495,7 @@ void		GL_LoadTexMatrix( const mat4x4_t m );
 void		GL_LoadIdentityTexMatrix( void );
 void		GL_EnableTexGen( int coord, int mode );
 void		GL_SetTexCoordArrayMode( int mode );
+qboolean 	GL_IsAlphaBlending( int blendsrc, int blenddst );
 
 void		R_InitImages( void );
 void		R_ShutdownImages( void );
@@ -517,7 +522,7 @@ qboolean	R_MiptexHasFullbrights( qbyte *pixels, int width, int height );
 // r_light.c
 //
 #define DLIGHT_SCALE	    0.5f
-#define MAX_SUPER_STYLES    1023
+#define MAX_SUPER_STYLES    1024
 
 extern int r_numSuperLightStyles;
 extern superLightStyle_t r_superLightStyles[MAX_SUPER_STYLES];
@@ -531,7 +536,7 @@ void		R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t 
 int			R_UploadLightmap( const char *name, qbyte *data, int w, int h );
 void		R_BuildLightmaps( int numLightmaps, int w, int h, const qbyte *data, mlightmapRect_t *rects );
 void		R_InitLightStyles( void );
-int			R_AddSuperLightStyle( const int *lightmaps, const qbyte *lightmapStyles, const qbyte *vertexStyles, 
+int			R_AddSuperLightStyle( const int *lightmaps, const qbyte *lightmapStyles, const qbyte *vertexStyles,
 								 mlightmapRect_t **lmRects );
 void		R_SortSuperLightStyles( void );
 
@@ -548,6 +553,7 @@ void		GL_Cull( int cull );
 void		GL_SetState( int state );
 void		GL_FrontFace( int front );
 void		GL_PolygonOffset( float factor, float offset );
+void 		GL_BindBuffer( int target, int buffer );
 
 void		R_BeginFrame( float cameraSeparation, qboolean forceClear );
 void		R_EndFrame( void );
@@ -576,10 +582,10 @@ int			R_GetCustomColor( int num );
 
 #ifdef HARDWARE_OUTLINES
 void		R_InitOutlines( void );
-void		R_AddModelMeshOutline( unsigned int modhandle, mfog_t *fog, int meshnum );
+void		R_AddModelMeshOutline( unsigned int modhandle, const mfog_t *fog, int meshnum );
 #endif
 
-#define ENTITY_OUTLINE(ent) (( ((ent)->renderfx & RF_VIEWERMODEL) && !(ri.params & RP_MIRRORVIEW) ) ? 0 : (ent)->outlineHeight)
+#define ENTITY_OUTLINE(ent) (( !(ri.params & RP_MIRRORVIEW) && ((ent)->renderfx & RF_VIEWERMODEL) ) ? 0 : (ent)->outlineHeight)
 
 msurface_t *R_TraceLine( trace_t *tr, const vec3_t start, const vec3_t end, int surfumask );
 
@@ -593,8 +599,8 @@ void		R_InitMeshLists( void );
 void		R_FreeMeshLists( void );
 void		R_ClearMeshList( meshlist_t *meshlist );
 void		R_AllocWorldMeshLists( void );
-meshbuffer_t *R_AddMeshToList( int type, mfog_t *fog, shader_t *shader, int infokey );
-void		R_AddModelMeshToList( unsigned int modhandle, mfog_t *fog, shader_t *shader, int meshnum );
+meshbuffer_t *R_AddMeshToList( int type, const mfog_t *fog, const shader_t *shader, int infokey, const mesh_t *mesh, unsigned short numVerts, unsigned short numElems );
+void		R_AddModelMeshToList( unsigned int modhandle, const mfog_t *fog, const shader_t *shader, int meshnum );
 
 void		R_SortMeshes( void );
 void		R_DrawMeshes( void );
@@ -604,7 +610,7 @@ void		R_DrawPortals( void );
 void		R_DrawCubemapView( vec3_t origin, vec3_t angles, int size );
 qboolean	R_DrawSkyPortal( skyportal_t *skyportal, vec3_t mins, vec3_t maxs );
 
-void		R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsArray, vec2_t *stArray, 
+void		R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsArray, vec2_t *stArray,
 								  int numTris, elem_t *elems, vec4_t *sVectorsArray );
 
 const char	*R_PortalKeyForPlane( cplane_t *plane );
@@ -617,6 +623,8 @@ const char	*R_PortalKeyForPlane( cplane_t *plane );
 #define DEFAULT_GLSL_SHADOWMAP_PROGRAM	"*r_defaultShadowmapProgram"
 #define DEFAULT_GLSL_OUTLINE_PROGRAM "*r_defaultOutlineProgram"
 #define DEFAULT_GLSL_TURBULENCE_PROGRAM "*r_defaultTurbulenceProgram"
+#define DEFAULT_GLSL_DYNAMIC_LIGHTS_PROGRAM "*r_defaultDynamicLightsProgram"
+#define DEFAULT_GLSL_Q3A_SHADER_PROGRAM "*r_defaultQ3AShaderProgram"
 
 enum
 {
@@ -625,52 +633,111 @@ enum
 	PROGRAM_TYPE_DISTORTION,
 	PROGRAM_TYPE_SHADOWMAP,
 	PROGRAM_TYPE_OUTLINE,
-	PROGRAM_TYPE_TURBULENCE
+	PROGRAM_TYPE_TURBULENCE,
+	PROGRAM_TYPE_DYNAMIC_LIGHTS,
+	PROGRAM_TYPE_Q3A_SHADER,
+
+	PROGRAM_TYPE_MAXTYPE
 };
 
 enum
 {
-	PROGRAM_APPLY_LIGHTSTYLE0			= 1 << 0,
-	PROGRAM_APPLY_LIGHTSTYLE1			= 1 << 1,
-	PROGRAM_APPLY_LIGHTSTYLE2			= 1 << 2,
-	PROGRAM_APPLY_LIGHTSTYLE3			= 1 << 3,
-	PROGRAM_APPLY_SPECULAR				= 1 << 4,
-	PROGRAM_APPLY_DIRECTIONAL_LIGHT	    = 1 << 5,
-	PROGRAM_APPLY_FB_LIGHTMAP			= 1 << 6,
-	PROGRAM_APPLY_OFFSETMAPPING			= 1 << 7,
-	PROGRAM_APPLY_RELIEFMAPPING			= 1 << 8,
-	PROGRAM_APPLY_AMBIENT_COMPENSATION  = 1 << 9,
-	PROGRAM_APPLY_DECAL					= 1 << 10,
-	PROGRAM_APPLY_DECAL_ADD				= 1 << 11,
-	PROGRAM_APPLY_BASETEX_ALPHA_ONLY	= 1 << 12,
+	PROGRAM_APPLY_CLIPPING				= 1 << 0,
+	PROGRAM_APPLY_GRAYSCALE				= 1 << 1,
+	PROGRAM_APPLY_FOG					= 1 << 2,
+	PROGRAM_APPLY_FOG2					= 1 << 3,
+	PROGRAM_APPLY_OVERBRIGHT_SCALING 	= 1 << 4,
 
-	PROGRAM_APPLY_DUDV					= 1 << 13,
-	PROGRAM_APPLY_EYEDOT				= 1 << 14,
-	PROGRAM_APPLY_DISTORTION_ALPHA		= 1 << 15,
-	PROGRAM_APPLY_REFLECTION			= 1 << 16,
-	PROGRAM_APPLY_REFRACTION			= 1 << 17,
+	PROGRAM_APPLY_TC_GEN_ENV			= 1 << 5,
+	PROGRAM_APPLY_TC_GEN_VECTOR			= 1 << 6,
+	PROGRAM_APPLY_TC_GEN_REFLECTION		= 1 << 7,
 
-	PROGRAM_APPLY_PCF2x2				= 1 << 18,
-	PROGRAM_APPLY_PCF3x3				= 1 << 19,
+	PROGRAM_APPLY_RGB_GEN_CONST 		= 1 << 8,
+	PROGRAM_APPLY_RGB_GEN_VERTEX 		= 1 << 9,
+	PROGRAM_APPLY_RGB_GEN_ONE_MINUS_VERTEX = 1 << 10,
 
-	PROGRAM_APPLY_CLIPPING				= 1 << 20,
-	PROGRAM_APPLY_CLAMPING				= 1 << 21,
+	PROGRAM_APPLY_ALPHA_GEN_CONST 		= 1 << 11,
+	PROGRAM_APPLY_ALPHA_GEN_VERTEX 		= 1 << 12,
+	PROGRAM_APPLY_ALPHA_GEN_ONE_MINUS_VERTEX = 1 << 13
+};
 
-	PROGRAM_APPLY_CELLSHADING			= 1 << 22,
+enum
+{
+	PROGRAM_APPLY_LIGHTSTYLE0			= 1 << 14,
+	PROGRAM_APPLY_LIGHTSTYLE1			= 1 << 15,
+	PROGRAM_APPLY_LIGHTSTYLE2			= 1 << 16,
+	PROGRAM_APPLY_LIGHTSTYLE3			= 1 << 17,
+	PROGRAM_APPLY_SPECULAR				= 1 << 18,
+	PROGRAM_APPLY_DIRECTIONAL_LIGHT	    = 1 << 19,
+	PROGRAM_APPLY_FB_LIGHTMAP			= 1 << 20,
+	PROGRAM_APPLY_OFFSETMAPPING			= 1 << 21,
+	PROGRAM_APPLY_RELIEFMAPPING			= 1 << 22,
+	PROGRAM_APPLY_AMBIENT_COMPENSATION  = 1 << 23,
+	PROGRAM_APPLY_DECAL					= 1 << 24,
+	PROGRAM_APPLY_DECAL_ADD				= 1 << 25,
+	PROGRAM_APPLY_BASETEX_ALPHA_ONLY	= 1 << 26,
+	PROGRAM_APPLY_CLAMPING				= 1 << 27,
+	PROGRAM_APPLY_CELLSHADING			= 1 << 28,
+	PROGRAM_APPLY_DIRECTIONAL_LIGHT_MIX	= 1 << 29,
+	PROGRAM_APPLY_HALFLAMBERT			= 1 << 30
+};
 
-	PROGRAM_APPLY_GRAYSCALE				= 1 << 23,
-	PROGRAM_APPLY_OUTLINES_CUTOFF		= 1 << 24
+enum
+{
+	PROGRAM_APPLY_TC_GEN_FOG			= 1 << 14,
+
+	PROGRAM_APPLY_COLOR_FOG 			= 1 << 15,
+	PROGRAM_APPLY_COLOR_FOG_ALPHA 		= 1 << 16
+};
+
+enum
+{
+	PROGRAM_APPLY_DUDV					= 1 << 14,
+	PROGRAM_APPLY_EYEDOT				= 1 << 15,
+	PROGRAM_APPLY_DISTORTION_ALPHA		= 1 << 16,
+	PROGRAM_APPLY_REFLECTION			= 1 << 17,
+	PROGRAM_APPLY_REFRACTION			= 1 << 18
+};
+
+enum
+{
+	PROGRAM_APPLY_PCF2x2				= 1 << 14,
+	PROGRAM_APPLY_PCF3x3				= 1 << 15,
+	PROGRAM_APPLY_PCF4x4				= 1 << 16
+};
+
+enum
+{
+	PROGRAM_APPLY_OUTLINES_CUTOFF		= 1 << 14
+};
+
+enum
+{
+	PROGRAM_APPLY_DLIGHT0				= 1 << 14,
+	PROGRAM_APPLY_DLIGHT1				= 1 << 15,
+	PROGRAM_APPLY_DLIGHT2				= 1 << 16,
+	PROGRAM_APPLY_DLIGHT3				= 1 << 17,
+	PROGRAM_APPLY_DLIGHT4				= 1 << 18,
+	PROGRAM_APPLY_DLIGHT5				= 1 << 19,
+	PROGRAM_APPLY_DLIGHT6				= 1 << 20,
+	PROGRAM_APPLY_DLIGHT7				= 1 << 21,
+
+	PROGRAM_APPLY_DLIGHT_MAX			= PROGRAM_APPLY_DLIGHT7
 };
 
 void		R_InitGLSLPrograms( void );
 int			R_FindGLSLProgram( const char *name );
-int			R_RegisterGLSLProgram( const char *name, const char *string, unsigned int features );
+int			R_RegisterGLSLProgram( int type, const char *name, const char *string, int features );
 int			R_GetProgramObject( int elem );
 int			R_CommonProgramFeatures( void );
 void		R_UpdateProgramUniforms( int elem, const vec3_t eyeOrigin, const vec3_t lightOrigin, const vec3_t lightDir,
 									const vec4_t ambient, const vec4_t diffuse, const superLightStyle_t *superLightStyle,
 									qboolean frontPlane, int TexWidth, int TexHeight,
-									float projDistance, float offsetmappingScale );
+									float projDistance, float offsetmappingScale, float glossExponent,
+									const qbyte *constColor, int overbrightBits );
+void		R_UpdateProgramFogParams( int elem, byte_vec4_t color, float clearDist, float opaqueDist, cplane_t *fogPlane, cplane_t *eyePlane, float eyeFogDist );
+unsigned int R_UpdateProgramLightsParams( int elem, unsigned int dlightbits );
+void 		R_UpdateProgramQ3AParams( int elem, const vec3_t eyeOrigin, const vec3_t entDist, const qbyte *constColor, int overbrightBits );
 void		R_ShutdownGLSLPrograms( void );
 void		R_ProgramList_f( void );
 void		R_ProgramDump_f( void );
@@ -681,14 +748,14 @@ void		R_ProgramDump_f( void );
 void		R_PushPoly( const meshbuffer_t *mb );
 void		R_AddPolysToList( void );
 qboolean	R_SurfPotentiallyFragmented( msurface_t *surf );
-int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts, 
+int			R_GetClippedFragments( const vec3_t origin, float radius, vec3_t axis[3], int maxfverts,
 								  vec3_t *fverts, int maxfragments, fragment_t *fragments );
 msurface_t *R_TransformedTraceLine( trace_t *tr, const vec3_t start, const vec3_t end, entity_t *test, int surfumask );
 
 //
 // r_register.c
 //
-int 		R_Init( void *hinstance, void *hWnd, qboolean verbose );
+int 		R_Init( void *hinstance, void *hWnd,/* void *parentWid,*/ qboolean verbose );
 void		R_Restart( void );
 void		R_Shutdown( qboolean verbose );
 
@@ -729,9 +796,18 @@ int			R_SkeletalGetBoneInfo( const model_t *mod, int bonenum, char *name, size_t
 void		R_SkeletalGetBonePose( const model_t *mod, int bonenum, int frame, bonepose_t *bonepose );
 
 //
+// r_vbo.c
+//
+void 		R_InitVBO( void );
+mesh_vbo_t *R_CreateStaticMeshVBO( void *owner, int numVerts, int numElems, int features );
+int 		R_UploadVBOVertexData( mesh_vbo_t *vbo, int vertsOffset, mesh_t *mesh );
+void 		R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, mesh_t *mesh );
+void 		R_ShutdownVBO( void );
+
+//
 // r_warp.c
 //
-skydome_t	*R_CreateSkydome( float skyheight, shader_t **farboxShaders, shader_t	**nearboxShaders );
+skydome_t	*R_CreateSkydome( float skyheight, shader_t **farboxShaders, shader_t **nearboxShaders );
 void		R_FreeSkydome( skydome_t *skydome );
 void		R_ClearSky( void );
 qboolean	R_DrawSky( shader_t *shader );
@@ -801,6 +877,8 @@ typedef struct
 	byte_vec4_t		outlineColor;
 #endif
 	byte_vec4_t		environmentColor;
+
+	float			lightingIntensity;
 
 	qboolean		lightmapsPacking;
 	qboolean		deluxeMaps;				// true if there are valid deluxemaps in the .bsp

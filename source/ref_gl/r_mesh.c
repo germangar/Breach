@@ -22,152 +22,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "r_local.h"
 
-#define	    QSORT_MAX_STACKDEPTH    2048
-
 static mempool_t *r_meshlistmempool;
 
 meshlist_t r_worldlist, r_shadowlist;
 static meshlist_t r_portallist, r_skyportallist;
 
-static void R_QSortMeshBuffers( meshbuffer_t *meshes, int Li, int Ri );
-static void R_ISortMeshBuffers( meshbuffer_t *meshes, int num_meshes );
-
 static qboolean R_AddPortalSurface( const meshbuffer_t *mb );
 static qboolean R_DrawPortalSurface( image_t **renderedtextures );
-
-#define R_MBCopy( in, out ) \
-	( \
-	( out ).sortkey = ( in ).sortkey, \
-	( out ).infokey = ( in ).infokey, \
-	( out ).dlightbits = ( in ).dlightbits, \
-	( out ).shaderkey = ( in ).shaderkey, \
-	( out ).shadowbits = ( in ).shadowbits \
-	)
-
-#define R_MBCmp( mb1, mb2 ) \
-	( \
-	( mb1 ).shaderkey > ( mb2 ).shaderkey ? qtrue : \
-	( mb1 ).shaderkey < ( mb2 ).shaderkey ? qfalse : \
-	( mb1 ).sortkey > ( mb2 ).sortkey ? qtrue : \
-	( mb1 ).sortkey < ( mb2 ).sortkey ? qfalse : \
-	( mb1 ).dlightbits > ( mb2 ).dlightbits ? qtrue : \
-	( mb1 ).dlightbits < ( mb2 ).dlightbits ? qfalse : \
-	( mb1 ).shadowbits > ( mb2 ).shadowbits \
-	)
-
-/*
-================
-R_QSortMeshBuffers
-
-Quicksort
-================
-*/
-static void R_QSortMeshBuffers( meshbuffer_t *meshes, int Li, int Ri )
-{
-	int li, ri, stackdepth = 0, total = Ri + 1;
-	meshbuffer_t median, tempbuf;
-	int lstack[QSORT_MAX_STACKDEPTH], rstack[QSORT_MAX_STACKDEPTH];
-
-mark0:
-	if( Ri - Li > 8 )
-	{
-		li = Li;
-		ri = Ri;
-
-		R_MBCopy( meshes[( Li+Ri ) >> 1], median );
-
-		if( R_MBCmp( meshes[Li], median ) )
-		{
-			if( R_MBCmp( meshes[Ri], meshes[Li] ) )
-				R_MBCopy( meshes[Li], median );
-		}
-		else if( R_MBCmp( median, meshes[Ri] ) )
-		{
-			R_MBCopy( meshes[Ri], median );
-		}
-
-		do
-		{
-			while( R_MBCmp( median, meshes[li] ) ) li++;
-			while( R_MBCmp( meshes[ri], median ) ) ri--;
-
-			if( li <= ri )
-			{
-				R_MBCopy( meshes[ri], tempbuf );
-				R_MBCopy( meshes[li], meshes[ri] );
-				R_MBCopy( tempbuf, meshes[li] );
-
-				li++;
-				ri--;
-			}
-		}
-		while( li < ri );
-
-		if( ( Li < ri ) && ( stackdepth < QSORT_MAX_STACKDEPTH ) )
-		{
-			lstack[stackdepth] = li;
-			rstack[stackdepth] = Ri;
-			stackdepth++;
-			li = Li;
-			Ri = ri;
-			goto mark0;
-		}
-
-		if( li < Ri )
-		{
-			Li = li;
-			goto mark0;
-		}
-	}
-	if( stackdepth )
-	{
-		--stackdepth;
-		Ri = ri = rstack[stackdepth];
-		Li = li = lstack[stackdepth];
-		goto mark0;
-	}
-
-	for( li = 1; li < total; li++ )
-	{
-		R_MBCopy( meshes[li], tempbuf );
-		ri = li - 1;
-
-		while( ( ri >= 0 ) && ( R_MBCmp( meshes[ri], tempbuf ) ) )
-		{
-			R_MBCopy( meshes[ri], meshes[ri+1] );
-			ri--;
-		}
-		if( li != ri+1 )
-			R_MBCopy( tempbuf, meshes[ri+1] );
-	}
-}
-
-/*
-================
-R_ISortMeshes
-
-Insertion sort
-================
-*/
-static void R_ISortMeshBuffers( meshbuffer_t *meshes, int num_meshes )
-{
-	int i, j;
-	meshbuffer_t tempbuf;
-
-	for( i = 1; i < num_meshes; i++ )
-	{
-		R_MBCopy( meshes[i], tempbuf );
-		j = i - 1;
-
-		while( ( j >= 0 ) && ( R_MBCmp( meshes[j], tempbuf ) ) )
-		{
-			R_MBCopy( meshes[j], meshes[j+1] );
-			j--;
-		}
-		if( i != j+1 )
-			R_MBCopy( tempbuf, meshes[j+1] );
-	}
-}
 
 /*
 =================
@@ -201,7 +62,7 @@ Calculate sortkey and store info used for batching and sorting.
 All 3D-geometry passes this function.
 =================
 */
-meshbuffer_t *R_AddMeshToList( int type, mfog_t *fog, shader_t *shader, int infokey )
+meshbuffer_t *R_AddMeshToList( int type, const mfog_t *fog, const shader_t *shader, int infokey, const mesh_t *mesh, unsigned short numVerts, unsigned short numElems )
 {
 	meshlist_t *list;
 	meshbuffer_t *meshbuf;
@@ -255,6 +116,19 @@ meshbuffer_t *R_AddMeshToList( int type, mfog_t *fog, shader_t *shader, int info
 	meshbuf->infokey = infokey;
 	meshbuf->dlightbits = 0;
 	meshbuf->shadowbits = r_entShadowBits[ri.currententity - r_entities];
+	meshbuf->vbo = NULL;
+
+	if( mesh )
+	{
+		meshbuf->mesh = mesh;
+		meshbuf->numVerts = numVerts;
+		meshbuf->numElems = numElems;
+	}
+	else
+	{
+		meshbuf->mesh = NULL;
+		meshbuf->numVerts = meshbuf->numElems = 0;
+	}
 
 	return meshbuf;
 }
@@ -264,11 +138,11 @@ meshbuffer_t *R_AddMeshToList( int type, mfog_t *fog, shader_t *shader, int info
 R_AddMeshToList
 =================
 */
-void R_AddModelMeshToList( unsigned int modhandle, mfog_t *fog, shader_t *shader, int meshnum )
+void R_AddModelMeshToList( unsigned int modhandle, const mfog_t *fog, const shader_t *shader, int meshnum )
 {
 	meshbuffer_t *mb;
-	
-	mb = R_AddMeshToList( MB_MODEL, fog, shader, -( meshnum+1 ) );
+
+	mb = R_AddMeshToList( MB_MODEL, fog, shader, -( meshnum+1 ), NULL, 0, 0 );
 	if( mb )
 		mb->LODModelHandle = modhandle;
 
@@ -288,14 +162,19 @@ R_BatchMeshBuffer
 Draw the mesh or batch it.
 ================
 */
-static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextmb )
+static int R_BatchMeshBuffer( const meshbuffer_t *meshbuffers, int cur, int end )
 {
+	int next;
 	int type, features;
 	qboolean nonMergable;
+	const meshbuffer_t *mb;
+	const meshbuffer_t *nextmb;
 	entity_t *ent;
 	shader_t *shader;
-	msurface_t *surf, *nextSurf;
+	qboolean stopBatching;
 
+	next = cur + 1;
+	mb = meshbuffers + cur;
 	MB_NUM2ENTITY( mb->sortkey, ent );
 
 	if( ri.currententity != ent )
@@ -317,9 +196,6 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 
 			features = shader->features;
 
-			surf = &r_worldbrushmodel->surfaces[mb->infokey-1];
-			nextSurf = NULL;
-
 			if( shader->flags & SHADER_SKY )
 			{
 				// render skybox and skydome, unless already rendered
@@ -335,7 +211,7 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 				if( mapConfig.depthWritingSky )
 					features |= MF_NOCOLORWRITE;
 				else
-					return;
+					break;
 			}
 
 			if( r_shownormals->integer )
@@ -344,39 +220,48 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 			if( ENTITY_OUTLINE(ent) )
 				features |= (MF_NORMALS|MF_ENABLENORMALS);
 #endif
+			if( mb->shadowbits )
+				features |= (MF_NORMALS|MF_ENABLENORMALS);
 			if( mapConfig.polygonOffsetSubmodels && ent != r_worldent )
 				features |= MF_POLYGONOFFSET2;
 
-			features |= r_superLightStyles[surf->superLightStyle].features;
+			features |= r_superLightStyles[((mb->sortkey >> 10) - 1) & (MAX_SUPER_STYLES-1)].features;
 
-			if( features & MF_NONBATCHED )
+			stopBatching = qfalse;
+			for( nextmb = meshbuffers + next; next <= end; next++, mb = nextmb++ )
 			{
-				nonMergable = qtrue;
-			}
-			else
-			{	// check if we need to render batched geometry this frame
-				if( nextmb
+				// check if we need to render batched geometry this frame
+				if( next < end
 					&& ( nextmb->shaderkey == mb->shaderkey )
 					&& ( nextmb->sortkey == mb->sortkey )
 					&& ( nextmb->dlightbits == mb->dlightbits )
 					&& ( nextmb->shadowbits == mb->shadowbits ) )
 				{
-					if( nextmb->infokey > 0 )
-						nextSurf = &r_worldbrushmodel->surfaces[nextmb->infokey-1];
+
+					nonMergable = mb->vbo || R_MeshOverflow2( mb, nextmb );
+					if( nonMergable && !r_backacc.numVerts )
+						features |= MF_NONBATCHED;
+				}
+				else
+				{
+					nonMergable = qtrue;
+					stopBatching = qtrue;
 				}
 
-				nonMergable = nextSurf ? R_MeshOverflow2( surf->mesh, nextSurf->mesh ) : qtrue;
-				if( nonMergable && !r_backacc.numVerts )
-					features |= MF_NONBATCHED;
-			}
+				if( features & MF_NONBATCHED )
+					nonMergable = qtrue;
 
-			R_PushMesh( surf->mesh, features );
+				R_PushMesh( mb->vbo, mb->mesh, features );
 
-			if( nonMergable )
-			{
-				if( ri.previousentity != ri.currententity )
-					R_RotateForEntity( ri.currententity );
-				R_RenderMeshBuffer( mb );
+				if( nonMergable )
+				{
+					if( ri.previousentity != ri.currententity )
+						R_RotateForEntity( ri.currententity );
+					R_RenderMeshBuffer( mb );
+				}
+
+				if( stopBatching )
+					break;
 			}
 			break;
 		case mod_alias:
@@ -401,23 +286,31 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 		break;
 	case MB_SPRITE:
 	case MB_CORONA:
-		nonMergable = R_PushSpritePoly( mb );
-		if( nonMergable
-			|| !nextmb
-			|| ( ( nextmb->shaderkey & 0xFC000FFF ) != ( mb->shaderkey & 0xFC000FFF ) )
-			|| ( ( nextmb->sortkey & 0xFFFFF ) != ( mb->sortkey & 0xFFFFF ) )
-			|| R_SpriteOverflow() )
+		for( nextmb = meshbuffers + next; next <= end; next++, mb = nextmb++ )
 		{
+			nonMergable = R_PushSpritePoly( mb );
+			stopBatching = ( next == end
+				|| ( nextmb->shaderkey & 0xFC000FFF ) != ( mb->shaderkey & 0xFC000FFF )
+				|| ( nextmb->sortkey & 0xFFFFF ) != ( mb->sortkey & 0xFFFFF )
+			);
+
 			if( !nonMergable )
 			{
+				ri.previousentity = ri.currententity;
 				ri.currententity = r_worldent;
-				ri.currentmodel = r_worldmodel;
 			}
 
-			// no rotation for sprites
-			if( ri.previousentity != ri.currententity )
-				R_TranslateForEntity( ri.currententity );
-			R_RenderMeshBuffer( mb );
+			if( nonMergable || stopBatching	|| R_SpriteOverflow() )
+			{
+                R_TranslateForEntity( ri.currententity );
+				R_RenderMeshBuffer( mb );
+			}
+
+			if( stopBatching )
+				break;
+
+			ri.previousentity = ri.currententity;
+			MB_NUM2ENTITY( nextmb->sortkey, ri.currententity );
 		}
 		break;
 	case MB_POLY:
@@ -429,24 +322,42 @@ static void R_BatchMeshBuffer( const meshbuffer_t *mb, const meshbuffer_t *nextm
 		R_RenderMeshBuffer( mb );
 		break;
 	}
+
+	return next;
 }
 
 /*
 ================
-R_SortMeshList
-
-Use quicksort for opaque meshes and insertion sort for translucent meshes.
+R_SortMeshes
 ================
 */
+static int R_MBCmp( const meshbuffer_t *mb1, const meshbuffer_t *mb2 )
+{
+	if( mb1->shaderkey > mb2->shaderkey )
+		return 1;
+	if( mb2->shaderkey > mb1->shaderkey )
+		return -1;
+
+	if( mb1->sortkey > mb2->sortkey )
+		return 1;
+	if( mb2->sortkey > mb1->sortkey )
+		return -1;
+
+	if( mb1->dlightbits > mb2->dlightbits )
+		return 1;
+	if( mb2->dlightbits > mb1->dlightbits )
+		return -1;
+
+	return 0;
+}
+
 void R_SortMeshes( void )
 {
 	if( r_draworder->integer )
 		return;
 
-	if( ri.meshlist->num_opaque_meshes )
-		R_QSortMeshBuffers( ri.meshlist->meshbuffer_opaque, 0, ri.meshlist->num_opaque_meshes - 1 );
-	if( ri.meshlist->num_translucent_meshes )
-		R_ISortMeshBuffers( ri.meshlist->meshbuffer_translucent, ri.meshlist->num_translucent_meshes );
+	qsort( ri.meshlist->meshbuffer_opaque, ri.meshlist->num_opaque_meshes, sizeof( meshbuffer_t ), (int (*)(const void *, const void *))R_MBCmp );
+	qsort( ri.meshlist->meshbuffer_translucent, ri.meshlist->num_translucent_meshes, sizeof( meshbuffer_t ), (int (*)(const void *, const void *))R_MBCmp );
 }
 
 /*
@@ -559,23 +470,18 @@ R_DrawMeshes
 void R_DrawMeshes( void )
 {
 	int i;
-	meshbuffer_t *meshbuf;
 
 	ri.previousentity = NULL;
 	if( ri.meshlist->num_opaque_meshes )
 	{
-		meshbuf = ri.meshlist->meshbuffer_opaque;
-		for( i = 0; i < ri.meshlist->num_opaque_meshes - 1; i++, meshbuf++ )
-			R_BatchMeshBuffer( meshbuf, meshbuf+1 );
-		R_BatchMeshBuffer( meshbuf, NULL );
+		for( i = 0; i < ri.meshlist->num_opaque_meshes;  )
+			i = R_BatchMeshBuffer( ri.meshlist->meshbuffer_opaque, i, ri.meshlist->num_opaque_meshes );
 	}
 
 	if( ri.meshlist->num_translucent_meshes )
 	{
-		meshbuf = ri.meshlist->meshbuffer_translucent;
-		for( i = 0; i < ri.meshlist->num_translucent_meshes - 1; i++, meshbuf++ )
-			R_BatchMeshBuffer( meshbuf, meshbuf + 1 );
-		R_BatchMeshBuffer( meshbuf, NULL );
+		for( i = 0; i < ri.meshlist->num_translucent_meshes;  )
+			i = R_BatchMeshBuffer( ri.meshlist->meshbuffer_translucent, i, ri.meshlist->num_translucent_meshes );
 	}
 
 	R_LoadIdentity();
@@ -845,7 +751,7 @@ static qboolean R_DrawPortalSurface( image_t **renderedtextures )
 {
 	unsigned int i;
 	int x, y, w, h;
-	int oldcluster;
+	int oldcluster, oldarea;
 	float dist, d, best_d;
 	refinst_t oldRI;
 	vec3_t origin, axis[3];
@@ -951,6 +857,7 @@ static qboolean R_DrawPortalSurface( image_t **renderedtextures )
 	}
 
 	oldcluster = r_viewcluster;
+	oldarea = r_viewarea;
 setup_and_render:
 	ri.previousentity = NULL;
 	memcpy( &oldRI, &prevRI, sizeof( refinst_t ) );
@@ -1101,6 +1008,7 @@ done:
 	if( !( ri.params & RP_OLDVIEWCLUSTER ) )
 		r_oldviewcluster = -1;		// force markleafs
 	r_viewcluster = oldcluster;		// restore viewcluster for current frame
+	r_viewarea = oldarea;
 
 	memcpy( &ri, &prevRI, sizeof( refinst_t ) );
 	memcpy( &prevRI, &oldRI, sizeof( refinst_t ) );
@@ -1162,13 +1070,14 @@ R_DrawSkyPortal
 qboolean R_DrawSkyPortal( skyportal_t *skyportal, vec3_t mins, vec3_t maxs )
 {
 	int x, y, w, h;
-	int oldcluster;
+	int oldcluster, oldarea;
 	refinst_t oldRI;
 
 	if( !R_ScissorForEntityBBox( r_worldent, mins, maxs, &x, &y, &w, &h ) )
 		return qfalse;
 
 	oldcluster = r_viewcluster;
+	oldarea = r_viewarea;
 	ri.previousentity = NULL;
 	memcpy( &oldRI, &prevRI, sizeof( refinst_t ) );
 	memcpy( &prevRI, &ri, sizeof( refinst_t ) );
@@ -1223,6 +1132,7 @@ qboolean R_DrawSkyPortal( skyportal_t *skyportal, vec3_t mins, vec3_t maxs )
 
 	r_oldviewcluster = -1;			// force markleafs
 	r_viewcluster = oldcluster;		// restore viewcluster for current frame
+	r_viewarea = oldarea;
 
 	memcpy( &ri, &prevRI, sizeof( refinst_t ) );
 	memcpy( &prevRI, &oldRI, sizeof( refinst_t ) );
@@ -1340,4 +1250,286 @@ void R_BuildTangentVectors( int numVertexes, vec4_t *xyzArray, vec4_t *normalsAr
 
 	if( tVectorsArray != stackTVectorsArray )
 		Mem_TempFree( tVectorsArray );
+}
+
+/*
+=========================================================
+
+STATIC VERTEX BUFFER OBJECTS
+
+=========================================================
+*/
+
+#define MAX_MESH_VERTREX_BUFFER_OBJECTS 	65536
+
+static mesh_vbo_t mesh_vbo[MAX_MESH_VERTREX_BUFFER_OBJECTS];
+static int num_mesh_vbos;
+
+static void R_DestroyMeshVBO( mesh_vbo_t *vbo );
+
+/*
+* R_InitVBO
+*/
+void R_InitVBO( void )
+{
+	num_mesh_vbos = 0;
+	memset( mesh_vbo, 0,  sizeof( mesh_vbo ) );
+}
+
+/*
+* R_CreateStaticMeshVBO
+*
+* Create two static buffer objects: vertex buffer and elements buffer, the real
+* data is uploaded by calling R_UploadVBOVertexData and R_UploadVBOElemData
+*/
+mesh_vbo_t *R_CreateStaticMeshVBO( void *owner, int numVerts, int numElems, int features )
+{
+	int i;
+	size_t size;
+	GLuint vbo_id;
+	mesh_vbo_t *vbo = NULL;
+
+	if( !glConfig.ext.vertex_buffer_object )
+		return NULL;
+
+	if( num_mesh_vbos == MAX_MESH_VERTREX_BUFFER_OBJECTS )
+		return NULL;
+
+	vbo = &mesh_vbo[num_mesh_vbos];
+	memset( vbo, 0, sizeof( *vbo ) );
+
+	// vertex data
+	size = 0;
+	size += numVerts * sizeof( vec4_t );
+
+	// normals data
+	vbo->normalsOffset = size;
+	size += numVerts * sizeof( vec4_t );
+
+	// s-vectors (tangent vectors)
+	if( features & MF_SVECTORS )
+	{
+		vbo->sVectorsOffset = size;
+		size += numVerts * sizeof( vec4_t );
+	}
+
+	// texture coordinates
+	if( features & MF_STCOORDS )
+	{
+		vbo->stOffset = size;
+		size += numVerts * sizeof( vec2_t );
+	}
+
+	// lightmap texture coordinates
+	for( i = 0; i < MAX_LIGHTMAPS; i++ )
+	{
+		if( !(features & (MF_LMCOORDS<<i)) )
+			break;
+		vbo->lmstOffset[i] = size;
+		size += numVerts * sizeof( vec2_t );
+	}
+
+	// vertex colors
+	for( i = 0; i < MAX_LIGHTMAPS; i++ )
+	{
+		if( !(features & (MF_COLORS<<i)) )
+			break;
+		vbo->colorsOffset[i] = size;
+		size += numVerts * sizeof( byte_vec4_t );
+	}
+
+	// pre-allocate vertex buffer
+	vbo_id = 0;
+	qglGenBuffersARB( 1, &vbo_id );
+	if( !vbo_id )
+		goto error;
+	vbo->vertexId = vbo_id;
+
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, vbo->vertexId );
+	qglBufferDataARB( GL_ARRAY_BUFFER_ARB, size, NULL, GL_STATIC_DRAW_ARB );
+	if( qglGetError () == GL_OUT_OF_MEMORY )
+		goto error;
+
+	vbo->size += size;
+
+	// pre-allocate elements buffer
+	vbo_id = 0;
+	qglGenBuffersARB( 1, &vbo_id );
+	if( !vbo_id )
+		goto error;
+	vbo->elemId = vbo_id;
+
+	size = numElems * sizeof( unsigned int );
+	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, vbo->elemId );
+	qglBufferDataARB( GL_ELEMENT_ARRAY_BUFFER_ARB, size, NULL, GL_STATIC_DRAW_ARB );
+	if( qglGetError () == GL_OUT_OF_MEMORY )
+		goto error;
+
+	vbo->size += size;
+
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+
+	vbo->numVerts = numVerts;
+	vbo->numElems = numElems;
+	vbo->owner = owner;
+
+	num_mesh_vbos++;
+	return vbo;
+
+error:
+	if( vbo )
+		R_DestroyMeshVBO( vbo );
+
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+
+	return NULL;
+}
+
+/*
+* R_DestroyMeshVBO
+*/
+static void R_DestroyMeshVBO( mesh_vbo_t *vbo )
+{
+	GLuint vbo_id;
+
+	assert( vbo );
+
+	if( vbo->vertexId )
+	{
+		vbo_id = vbo->vertexId;
+		qglDeleteBuffersARB( 1, &vbo_id );
+	}
+
+	if( vbo->elemId )
+	{
+		vbo_id = vbo->elemId;
+		qglDeleteBuffersARB( 1, &vbo_id );
+	}
+
+	memset( vbo, 0, sizeof( *vbo ) );
+}
+
+/*
+* R_UploadVBOVertexData
+*
+* Uploads required vertex data to the buffer
+*/
+int R_UploadVBOVertexData( mesh_vbo_t *vbo, int vertsOffset, mesh_t *mesh )
+{
+	int i;
+	int numVerts;
+	int errArrays;
+
+	assert( vbo );
+	assert( mesh );
+
+	errArrays = 0;
+	numVerts = mesh->numVerts;
+	if( !vbo->vertexId )
+		return 0;
+
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, vbo->vertexId );
+
+	// upload vertex xyz data
+	if( mesh->xyzArray )
+		qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, 0 + vertsOffset * sizeof( vec4_t ), numVerts * sizeof( vec4_t ), mesh->xyzArray );
+
+	// upload normals data
+	if( vbo->normalsOffset )
+	{
+		if( !mesh->normalsArray )
+			errArrays |= MF_NORMALS;
+		else
+			qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, vbo->normalsOffset + vertsOffset * sizeof( vec4_t ), numVerts * sizeof( vec4_t ), mesh->normalsArray );
+	}
+
+	// upload tangent vectors
+	if( vbo->sVectorsOffset )
+	{
+		if( !mesh->sVectorsArray )
+			errArrays |= MF_SVECTORS;
+		else
+			qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, vbo->sVectorsOffset + vertsOffset * sizeof( vec4_t ), numVerts * sizeof( vec4_t ), mesh->sVectorsArray );
+	}
+
+	// upload texture coordinates
+	if( vbo->stOffset )
+	{
+		if( !mesh->stArray )
+			errArrays |= MF_STCOORDS;
+		else
+			qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, vbo->stOffset + vertsOffset * sizeof( vec2_t ), numVerts * sizeof( vec2_t ), mesh->stArray );
+	}
+
+	// upload lightmap texture coordinates
+	for( i = 0; i < MAX_LIGHTMAPS; i++ )
+	{
+		if( !vbo->lmstOffset[i] )
+			break;
+		if( !mesh->lmstArray[i] )
+		{
+			errArrays |= MF_LMCOORDS<<i;
+			break;
+		}
+		qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, vbo->lmstOffset[i] + vertsOffset * sizeof( vec2_t ), numVerts * sizeof( vec2_t ), mesh->lmstArray[i] );
+	}
+
+	// upload vertex colors (although indices > 0 are never used)
+	for( i = 0; i < MAX_LIGHTMAPS; i++ )
+	{
+		if( !vbo->colorsOffset[i] )
+			break;
+		if( !mesh->colorsArray[i] )
+		{
+			errArrays |= MF_COLORS<<i;
+			break;
+		}
+		qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, vbo->colorsOffset[i] + vertsOffset * sizeof( byte_vec4_t ), numVerts * sizeof( byte_vec4_t ), mesh->colorsArray[i] );
+	}
+
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+
+	return errArrays;
+}
+
+/*
+* R_UploadVBOElemData
+*
+* Upload elements into the buffer, properly offsetting them (batching)
+*/
+void R_UploadVBOElemData( mesh_vbo_t *vbo, int vertsOffset, int elemsOffset, mesh_t *mesh )
+{
+	int i;
+	unsigned int *ielems;
+
+	assert( vbo );
+
+	if( !vbo->elemId )
+		return;
+
+	ielems = Mem_TempMalloc( sizeof( *ielems ) * mesh->numElems );
+	for( i = 0; i < mesh->numElems; i++ )
+		ielems[i] = vertsOffset + mesh->elems[i];
+
+	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, vbo->elemId );
+	qglBufferSubDataARB( GL_ELEMENT_ARRAY_BUFFER_ARB, elemsOffset * sizeof( unsigned int ), mesh->numElems * sizeof( unsigned int ), ielems );
+	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+
+	Mem_TempFree( ielems );
+}
+
+/*
+* R_ShutdownVBO
+*/
+void R_ShutdownVBO( void )
+{
+	int i;
+	mesh_vbo_t *vbo;
+
+	for( i = 0, vbo = mesh_vbo; i < num_mesh_vbos; i++, vbo++ )
+		R_DestroyMeshVBO( vbo );
+
+	num_mesh_vbos = 0;
 }

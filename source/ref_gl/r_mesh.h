@@ -38,6 +38,7 @@ enum
 	MF_SVECTORS			= 1 << 12,
 	MF_NONBATCHED		= 1 << 13,
 	MF_POLYGONOFFSET	= 1 << 14,
+	MF_HARDWARE 		= 1 << 15,
 
 	// global features
 	MF_NOCULL			= 1 << 16,
@@ -57,9 +58,28 @@ enum
 	MB_MAXTYPES = 4
 };
 
+typedef struct mesh_vbo_s
+{
+	unsigned int 		vertexId;
+	unsigned int		elemId;
+	void 				*owner;
+	unsigned int 		visframe;
+
+	unsigned int 		numVerts;
+	unsigned int 		numElems;
+
+	size_t				size;
+
+	size_t 				normalsOffset;
+	size_t 				sVectorsOffset;
+	size_t 				stOffset;
+	size_t 				lmstOffset[MAX_LIGHTMAPS];
+	size_t 				colorsOffset[MAX_LIGHTMAPS];
+} mesh_vbo_t;
+
 typedef struct mesh_s
 {
-	int					numVertexes;
+	unsigned short		numVerts;
 	vec4_t				*xyzArray;
 	vec4_t				*normalsArray;
 	vec4_t				*sVectorsArray;
@@ -67,7 +87,7 @@ typedef struct mesh_s
 	vec2_t				*lmstArray[MAX_LIGHTMAPS];
 	byte_vec4_t			*colorsArray[MAX_LIGHTMAPS];
 
-	int					numElems;
+	unsigned short		numElems;
 	elem_t				*elems;
 } mesh_t;
 
@@ -95,6 +115,11 @@ typedef struct
 		unsigned int	LODModelHandle;
 	};
 	unsigned int		shadowbits;
+
+	// the following is only valid for world surfaces
+	const mesh_t		*mesh;
+	const mesh_vbo_t	*vbo;
+	unsigned			short numVerts, numElems;
 } meshbuffer_t;
 
 typedef struct

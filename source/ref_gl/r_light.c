@@ -100,13 +100,10 @@ R_AddDynamicLights
 */
 void R_AddDynamicLights( unsigned int dlightbits, int state )
 {
-	unsigned int i, j, numTempElems;
-	qboolean cullAway;
+	unsigned int i;
 	const dlight_t *light;
-	const shader_t *shader;
-	vec3_t tvec, dlorigin, normal;
-	elem_t tempElemsArray[MAX_ARRAY_ELEMENTS];
-	float inverseIntensity, *v1, *v2, *v3, dist;
+	vec3_t tvec, dlorigin;
+	float inverseIntensity;
 	qboolean scaledRGB = qfalse;
 	const mat4x4_t m = { 0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 0.5, 0, 0.5, 0.5, 0.5, 1 };
 	GLfloat xyzFallof[4][4] = { { 1, 0, 0, 0 }, { 0, 1, 0, 0 }, { 0, 0, 1, 0 }, { 0, 0, 0, 0 } };
@@ -120,7 +117,7 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 	for( i = 0; i < (unsigned)( glConfig.ext.texture3D ? 1 : 2 ); i++ )
 	{
 		GL_SelectTexture( i );
-		
+
 		// if not additive, apply RGB scaling
 		if( !i && !r_lighting_additivedlights->integer && glConfig.ext.texture_env_combine )
 		{
@@ -164,37 +161,6 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 			Matrix_TransformVector( ri.currententity->axis, tvec, dlorigin );
 		}
 
-		shader = light->shader;
-		if( shader && ( shader->flags & SHADER_CULL_BACK ) )
-			cullAway = qtrue;
-		else
-			cullAway = qfalse;
-
-		numTempElems = 0;
-		if( cullAway )
-		{
-			for( j = 0; j < r_backacc.numElems; j += 3 )
-			{
-				v1 = ( float * )( vertsArray + elemsArray[j+0] );
-				v2 = ( float * )( vertsArray + elemsArray[j+1] );
-				v3 = ( float * )( vertsArray + elemsArray[j+2] );
-
-				normal[0] = ( v1[1] - v2[1] ) * ( v3[2] - v2[2] ) - ( v1[2] - v2[2] ) * ( v3[1] - v2[1] );
-				normal[1] = ( v1[2] - v2[2] ) * ( v3[0] - v2[0] ) - ( v1[0] - v2[0] ) * ( v3[2] - v2[2] );
-				normal[2] = ( v1[0] - v2[0] ) * ( v3[1] - v2[1] ) - ( v1[1] - v2[1] ) * ( v3[0] - v2[0] );
-				dist = ( dlorigin[0] - v1[0] ) * normal[0] + ( dlorigin[1] - v1[1] ) * normal[1] + ( dlorigin[2] - v1[2] ) * normal[2];
-
-				if( dist <= 0 || dist * Q_RSqrt( DotProduct( normal, normal ) ) >= light->intensity )
-					continue;
-
-				tempElemsArray[numTempElems++] = elemsArray[j+0];
-				tempElemsArray[numTempElems++] = elemsArray[j+1];
-				tempElemsArray[numTempElems++] = elemsArray[j+2];
-			}
-			if( !numTempElems )
-				continue;
-		}
-
 		inverseIntensity = 1 / light->intensity;
 
 		GL_Bind( 0, r_dlighttexture );
@@ -225,20 +191,7 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 			qglTexGenfv( GL_T, GL_OBJECT_PLANE, xyzFallof[3] );
 		}
 
-		if( numTempElems )
-		{
-			if( glConfig.ext.draw_range_elements )
-				qglDrawRangeElementsEXT( GL_TRIANGLES, 0, r_backacc.numVerts, numTempElems, GL_UNSIGNED_INT, tempElemsArray );
-			else
-				qglDrawElements( GL_TRIANGLES, numTempElems, GL_UNSIGNED_INT, tempElemsArray );
-		}
-		else
-		{
-			if( glConfig.ext.draw_range_elements )
-				qglDrawRangeElementsEXT( GL_TRIANGLES, 0, r_backacc.numVerts, r_backacc.numElems, GL_UNSIGNED_INT, elemsArray );
-			else
-				qglDrawElements( GL_TRIANGLES, r_backacc.numElems, GL_UNSIGNED_INT, elemsArray );
-		}
+		R_DrawElements();
 	}
 
 	if( glConfig.ext.texture3D )
@@ -301,7 +254,7 @@ void R_DrawCoronas( void )
 		if( tr.fraction != 1.0f )
 			continue;
 
-		mb = R_AddMeshToList( MB_CORONA, NULL, r_coronaShader, -( (signed int)i + 1 ) );
+		mb = R_AddMeshToList( MB_CORONA, NULL, r_coronaShader, -( (signed int)i + 1 ), NULL, 0, 0 );
 		if( mb )
 			mb->shaderkey |= ( bound( 1, 0x4000 - (unsigned int)dist, 0x4000 - 1 ) << 12 );
 	}
@@ -319,7 +272,7 @@ void R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t d
 	int i, j;
 	int k, s;
 	int vi[3], elem[4];
-	float dot, t[8];
+	float dot, t[8], scale;
 	vec3_t vf, vf2, tdir;
 	vec3_t ambientLocal, diffuseLocal;
 	vec_t *gridSize, *gridMins;
@@ -355,9 +308,8 @@ void R_LightForOrigin( const vec3_t origin, vec3_t dir, vec4_t ambient, vec4_t d
 
 	for( i = 0; i < 4; i++ )
 	{
-		clamp( elem[i], 0, r_worldbrushmodel->numlightarrayelems - 2 );
-		lightarray[i*2+0] = *r_worldbrushmodel->lightarray[elem[i]+0];
-		lightarray[i*2+1] = *r_worldbrushmodel->lightarray[elem[i]+1];
+		lightarray[i*2+0] = *r_worldbrushmodel->lightarray[bound( 0, elem[i]+0, r_worldbrushmodel->numlightarrayelems-1)];
+		lightarray[i*2+1] = *r_worldbrushmodel->lightarray[bound( 0, elem[i]+1, r_worldbrushmodel->numlightarrayelems-1)];
 	}
 
 	t[0] = vf2[0] * vf2[1] * vf2[2];
@@ -463,25 +415,25 @@ dynamic:
 
 	VectorNormalizeFast( dir );
 
+	scale = ( 1 << mapConfig.pow2MapOvrbr ) * (mapConfig.lightingIntensity ? mapConfig.lightingIntensity : 1) / 255.0f;
+
 	if( ambient )
 	{
-		dot = bound( 0.0f, r_lighting_ambientscale->value, 1.0f ) * ( 1 << mapConfig.pow2MapOvrbr ) * ( 1.0 / 255.0 );
+		float scale2 = bound( 0.0f, r_lighting_ambientscale->value, 1.0f ) * scale;
+
 		for( i = 0; i < 3; i++ )
-		{
-			ambient[i] = ambientLocal[i] * dot;
-			clamp( ambient[i], 0, 1 );
-		}
+			ambient[i] = ambientLocal[i] * scale2;
+
 		ambient[3] = 1.0f;
 	}
 
 	if( diffuse )
 	{
-		dot = bound( 0.0f, r_lighting_directedscale->value, 1.0f ) * ( 1 << mapConfig.pow2MapOvrbr ) * ( 1.0 / 255.0 );
+		float scale2 = bound( 0.0f, r_lighting_directedscale->value, 1.0f ) * scale;
+
 		for( i = 0; i < 3; i++ )
-		{
-			diffuse[i] = diffuseLocal[i] * dot;
-			clamp( diffuse[i], 0, 1 );
-		}
+			diffuse[i] = diffuseLocal[i] * scale2;
+
 		diffuse[3] = 1.0f;
 	}
 }
@@ -628,6 +580,7 @@ static void R_BuildLightmap( int w, int h, qboolean deluxe, const qbyte *data, q
 {
 	int x, y;
 	qbyte *rgba;
+	int bits = deluxe ? 0 : mapConfig.pow2MapOvrbr;
 
 	if( !data || (r_fullbright->integer && !deluxe) )
 	{
@@ -637,7 +590,7 @@ static void R_BuildLightmap( int w, int h, qboolean deluxe, const qbyte *data, q
 		return;
 	}
 
-	if( deluxe )
+	if( !bits )
 	{
 		for( y = 0; y < h; y++ )
 		{
@@ -651,27 +604,24 @@ static void R_BuildLightmap( int w, int h, qboolean deluxe, const qbyte *data, q
 	}
 	else
 	{
-		int bits = mapConfig.pow2MapOvrbr;
-		float scaled[3], maxScaled;
+		float scaled[3];
+		float intensity = (1 << bits) / 255.0f;
 
 		for( y = 0; y < h; y++ )
 		{
 			for( x = 0, rgba = dest + y * blockWidth; x < w; x++, data += LIGHTMAP_BYTES, rgba += 4 )
 			{
-				scaled[0] = (float)( (int)data[0] << bits );
-				scaled[1] = (float)( (int)data[1] << bits );
-				scaled[2] = (float)( (int)data[2] << bits );
+				vec3_t normalized;
 
-				maxScaled = max( max( scaled[0], scaled[1] ), scaled[2] );
-				if( maxScaled > 255 )
-				{
-					maxScaled = 255.0f / maxScaled;
-					VectorScale( scaled, maxScaled, scaled );
-				}
+				scaled[0] = (float)( (int)data[0] ) * intensity;
+				scaled[1] = (float)( (int)data[1] ) * intensity;
+				scaled[2] = (float)( (int)data[2] ) * intensity;
 
-				rgba[0] = ( qbyte )( ( bound( 0, scaled[0], 255 ) ) );
-				rgba[1] = ( qbyte )( ( bound( 0, scaled[1], 255 ) ) );
-				rgba[2] = ( qbyte )( ( bound( 0, scaled[2], 255 ) ) );
+				ColorNormalize( scaled, normalized );
+
+				rgba[0] = ( qbyte )( normalized[0] * 255 );
+				rgba[1] = ( qbyte )( normalized[1] * 255 );
+				rgba[2] = ( qbyte )( normalized[2] * 255 );
 			}
 		}
 	}
@@ -692,7 +642,7 @@ int R_UploadLightmap( const char *name, qbyte *data, int w, int h )
 
 	Q_snprintfz( uploadName, sizeof( uploadName ), "%s%i", name, r_numUploadedLightmaps );
 
-	image = R_LoadPic( uploadName, (qbyte **)( &data ), w, h, IT_CLAMP|IT_NOPICMIP|IT_NOMIPMAP, LIGHTMAP_BYTES );
+	image = R_LoadPic( uploadName, (qbyte **)( &data ), w, h, IT_CLAMP|IT_NOPICMIP|IT_NOMIPMAP|IT_NOCOMPRESS, LIGHTMAP_BYTES );
 	r_lightmapTextures[r_numUploadedLightmaps] = image;
 
 	return r_numUploadedLightmaps++;
@@ -757,21 +707,27 @@ static int R_PackLightmaps( int num, int w, int h, int size, int stride, qboolea
 	{
 		for(; ( num >= root ) && ( rectY < maxY ); rectY++, num -= root ) ;
 
-		// sample down if not a power of two
-		for( y = 1; y < rectY; y <<= 1 ) ;
-		if( y > rectY )
-			y >>= 1;
-		rectY = y;
+		//if( !glConfig.ext.texture_non_power_of_two )
+		{
+			// sample down if not a power of two
+			for( y = 1; y < rectY; y <<= 1 ) ;
+			if( y > rectY )
+				y >>= 1;
+			rectY = y;
+		}
 	}
 	else
 	{
 		for(; ( num >= root ) && ( rectX < maxX ); rectX++, num -= root ) ;
 
-		// sample down if not a power of two
-		for( x = 1; x < rectX; x <<= 1 ) ;
-		if( x > rectX )
-			x >>= 1;
-		rectX = x;
+		//if( !glConfig.ext.texture_non_power_of_two )
+		{
+			// sample down if not a power of two
+			for( x = 1; x < rectX; x <<= 1 ) ;
+			if( x > rectX )
+				x >>= 1;
+			rectX = x;
+		}
 	}
 
 	tw = 1.0 / (double)rectX;
@@ -831,14 +787,10 @@ void R_BuildLightmaps( int numLightmaps, int w, int h, const qbyte *data, mlight
 	// set overbright bits for lightmaps and lightgrid
 	// deluxemapped maps have zero scale because most surfaces
 	// have a gloss stage that makes them look brighter anyway
-	/*if( mapConfig.deluxeMapping )
-	mapConfig.pow2MapOvrbr = 0;
-	else */if( r_ignorehwgamma->integer )
-		mapConfig.pow2MapOvrbr = mapConfig.overbrightBits;
-	else
-		mapConfig.pow2MapOvrbr = mapConfig.overbrightBits - r_overbrightbits->integer;
-	if( mapConfig.pow2MapOvrbr < 0 )
-		mapConfig.pow2MapOvrbr = 0;
+	mapConfig.pow2MapOvrbr = max(
+		mapConfig.overbrightBits
+		- ( r_ignorehwgamma->integer ? 0 : r_overbrightbits->integer )
+		, 0 );
 
 	if( !mapConfig.lightmapsPacking )
 		size = max( w, h );

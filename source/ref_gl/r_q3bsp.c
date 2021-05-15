@@ -180,8 +180,8 @@ static void Mod_LoadVertexes( const lump_t *l )
 	float *out_xyz, *out_normals, *out_st, *out_lmst;
 	qbyte *buffer, *out_colors;
 	size_t bufSize;
-	vec3_t color, fcolor;
-	float div;
+	vec3_t color;
+	float div = ( 1 << mapConfig.overbrightBits ) * (mapConfig.lightingIntensity ? mapConfig.lightingIntensity : 1.0f) / 255.0f;
 
 	in = ( void * )( mod_base + l->fileofs );
 	if( l->filelen % sizeof( *in ) )
@@ -210,11 +210,6 @@ static void Mod_LoadVertexes( const lump_t *l )
 	out_lmst = loadmodel_lmst_array[0][0];
 	out_colors = loadmodel_colors_array[0][0];
 
-	if( r_mapoverbrightbits->integer > 0 )
-		div = (float)( 1 << r_mapoverbrightbits->integer ) / 255.0f;
-	else
-		div = 1.0f / 255.0f;
-
 	for( i = 0; i < count; i++, in++, out_xyz += 4, out_normals += 4, out_st += 2, out_lmst += 2, out_colors += 4 )
 	{
 		for( j = 0; j < 3; j++ )
@@ -240,13 +235,14 @@ static void Mod_LoadVertexes( const lump_t *l )
 		}
 		else
 		{
-			for( j = 0; j < 3; j++ )
-				color[j] = ( ( float )in->color[j] * div );
-			ColorNormalize( color, fcolor );
+			color[0] = ( ( float )in->color[0] * div );
+			color[1] = ( ( float )in->color[1] * div );
+			color[2] = ( ( float )in->color[2] * div );
+			ColorNormalize( color, color );
 
-			out_colors[0] = ( qbyte )( fcolor[0] * 255 );
-			out_colors[1] = ( qbyte )( fcolor[1] * 255 );
-			out_colors[2] = ( qbyte )( fcolor[2] * 255 );
+			out_colors[0] = ( qbyte )( color[0] * 255 );
+			out_colors[1] = ( qbyte )( color[1] * 255 );
+			out_colors[2] = ( qbyte )( color[2] * 255 );
 			out_colors[3] = in->color[3];
 		}
 	}
@@ -264,8 +260,8 @@ static void Mod_LoadVertexes_RBSP( const lump_t *l )
 	float *out_xyz, *out_normals, *out_st, *out_lmst[MAX_LIGHTMAPS];
 	qbyte *buffer, *out_colors[MAX_LIGHTMAPS];
 	size_t bufSize;
-	vec3_t color, fcolor;
-	float div = (1.0f / 255.0f) * ( 1 << mapConfig.overbrightBits );
+	vec3_t color;
+	float div = ( 1 << mapConfig.overbrightBits ) * (mapConfig.lightingIntensity ? mapConfig.lightingIntensity : 1.0f) / 255.0f;
 
 	in = ( void * )( mod_base + l->fileofs );
 	if( l->filelen % sizeof( *in ) )
@@ -325,11 +321,11 @@ static void Mod_LoadVertexes_RBSP( const lump_t *l )
 				color[0] = ( ( float )in->color[j][0] * div );
 				color[1] = ( ( float )in->color[j][1] * div );
 				color[2] = ( ( float )in->color[j][2] * div );
-				ColorNormalize( color, fcolor );
+				ColorNormalize( color, color );
 
-				out_colors[j][0] = ( qbyte )( fcolor[0] * 255 );
-				out_colors[j][1] = ( qbyte )( fcolor[1] * 255 );
-				out_colors[j][2] = ( qbyte )( fcolor[2] * 255 );
+				out_colors[j][0] = ( qbyte )( color[0] * 255 );
+				out_colors[j][1] = ( qbyte )( color[1] * 255 );
+				out_colors[j][2] = ( qbyte )( color[2] * 255 );
 				out_colors[j][3] = in->color[j][3];
 			}
 		}
@@ -422,8 +418,9 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out )
 	qbyte *buffer;
 	size_t bufSize;
 
-	if( ( mapConfig.deluxeMappingEnabled && !(LittleLong( in->lm_texnum[0] ) < 0 || in->lightmapStyles[0] == 255) ) ||
-		( out->shader->flags & SHADER_PORTAL_CAPTURE2 ) )
+	if( ( mapConfig.deluxeMappingEnabled
+			&& ( !(LittleLong( in->lm_texnum[0] ) < 0 || in->lightmapStyles[0] == 255) || (out->shader->flags & SHADER_MATERIAL) ) )
+		|| ( out->shader->flags & SHADER_PORTAL_CAPTURE2 ) )
 	{
 		createSTverts = qtrue;
 	}
@@ -461,9 +458,7 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out )
 			if( !patch_cp[0] || !patch_cp[1] )
 				break;
 
-			subdivLevel = r_subdivisions->value;
-			if( subdivLevel < 1 )
-				subdivLevel = 1;
+			subdivLevel = bound( 1, r_subdivisions->value,  16 );
 
 			inNumVerts = LittleLong( in->numverts );
 			inFirstVert = LittleLong( in->firstvert );
@@ -493,7 +488,7 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out )
 			buffer = ( qbyte * )Mod_Malloc( loadmodel, bufSize );
 
 			mesh = ( mesh_t * )buffer; buffer += sizeof( mesh_t );
-			mesh->numVertexes = numVerts;
+			mesh->numVerts = numVerts;
 			mesh->numElems = numElems;
 
 			mesh->xyzArray = ( vec4_t * )buffer; buffer += numVerts * sizeof( vec4_t );
@@ -554,7 +549,7 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out )
 			if( createSTverts )
 			{
 				mesh->sVectorsArray = ( vec4_t * )buffer; buffer += numVerts * sizeof( vec4_t );
-				R_BuildTangentVectors( mesh->numVertexes, mesh->xyzArray, mesh->normalsArray, mesh->stArray, mesh->numElems / 3, mesh->elems, mesh->sVectorsArray );
+				R_BuildTangentVectors( mesh->numVerts, mesh->xyzArray, mesh->normalsArray, mesh->stArray, mesh->numElems / 3, mesh->elems, mesh->sVectorsArray );
 			}
 			break;
 		}
@@ -582,7 +577,7 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out )
 			buffer = ( qbyte * )Mod_Malloc( loadmodel, bufSize );
 
 			mesh = ( mesh_t * )buffer; buffer += sizeof( mesh_t );
-			mesh->numVertexes = numVerts;
+			mesh->numVerts = numVerts;
 			mesh->numElems = numElems;
 
 			mesh->xyzArray = ( vec4_t * )buffer; buffer += numVerts * sizeof( vec4_t );
@@ -610,7 +605,7 @@ static mesh_t *Mod_CreateMeshForSurface( const rdface_t *in, msurface_t *out )
 			if( createSTverts )
 			{
 				mesh->sVectorsArray = ( vec4_t * )buffer; buffer += numVerts * sizeof( vec4_t );
-				R_BuildTangentVectors( mesh->numVertexes, mesh->xyzArray, mesh->normalsArray, mesh->stArray, mesh->numElems / 3, mesh->elems, mesh->sVectorsArray );
+				R_BuildTangentVectors( mesh->numVerts, mesh->xyzArray, mesh->normalsArray, mesh->stArray, mesh->numElems / 3, mesh->elems, mesh->sVectorsArray );
 			}
 
 			if( out->facetype == FACETYPE_PLANAR )
@@ -697,8 +692,6 @@ static inline void Mod_LoadFaceCommon( const rdface_t *in, msurface_t *out )
 	{
 		shaderref->shader = R_LoadShader( shaderref->name, shaderType, qfalse, 0, SHADER_INVALID, NULL );
 		out->shader = shaderref->shader;
-		if( out->facetype == FACETYPE_FLARE )
-			out->shader->flags |= SHADER_NO_DEPTH_TEST; // force SHADER_FLARE flag
 	}
 	else
 	{
@@ -785,7 +778,7 @@ Mod_LoadFaces_RBSP
 */
 static void Mod_LoadFaces_RBSP( const lump_t *l )
 {
-	int i, count;
+	int i, j, count;
 	rdface_t *in;
 	msurface_t *out;
 
@@ -799,7 +792,21 @@ static void Mod_LoadFaces_RBSP( const lump_t *l )
 	loadbmodel->numsurfaces = count;
 
 	for( i = 0; i < count; i++, in++, out++ )
+	{
+		if( r_fullbright->integer )
+		{
+			// we need to keep at least one lightmap and vertex style so
+			// VBO constructor doesn't complain
+			if( !glConfig.ext.vertex_buffer_object )
+				in->lightmapStyles[0] = in->vertexStyles[0] = 255;
+			for( j = 1; j < MAX_LIGHTMAPS; j++ )
+			{
+				in->lm_texnum[j] = -1;
+				in->lightmapStyles[j] = in->vertexStyles[j] = 255;
+			}
+		}
 		Mod_LoadFaceCommon( in, out );
+	}
 }
 
 /*
@@ -978,12 +985,12 @@ static void Mod_LoadLeafs( const lump_t *l, const lump_t *msLump )
 		}
 		out->cluster = LittleLong( in->cluster );
 
-		if( i && ( badBounds || VectorCompare( out->mins, out->maxs ) ) )
+		if( i && ( badBounds || VectorCompare( out->mins, out->maxs ) ) && out->cluster >= 0 )
 		{
 			Com_DPrintf( S_COLOR_YELLOW "WARNING: bad leaf bounds\n" );
 			out->cluster = -1;
 		}
-	
+
 		if( loadbmodel->pvs && ( out->cluster >= loadbmodel->pvs->numclusters ) )
 		{
 			Com_Printf( S_COLOR_YELLOW "WARNING: leaf cluster > numclusters" );
@@ -1291,6 +1298,25 @@ static void Mod_LoadEntities( const lump_t *l, vec3_t gridSize, vec3_t ambient, 
 				if( atof( value ) != 0 )
 					mapConfig.forceClear = qtrue;
 			}
+			else if( !strcmp( key, "_lightingIntensity" ) )
+			{
+				if( !r_fullbright->integer )
+				{
+					// non power of two intensity scale for lighting
+					sscanf( value, "%f", &mapConfig.lightingIntensity );
+					if( mapConfig.lightingIntensity <= 0 )
+						mapConfig.lightingIntensity = 0;
+					mapConfig.overbrightBits -= ( mapConfig.lightingIntensity ? atoi( r_mapoverbrightbits->dvalue ) : 0);
+
+					// compensate the the lack of real non-pow-of-2 multiplier with
+					// a rounded overbrightBits value for lighting data when GLSL is not available
+					if( !glConfig.ext.GLSL )
+					{
+						mapConfig.overbrightBits += NEARESTEXPOF2( mapConfig.lightingIntensity );
+						mapConfig.lightingIntensity = 0;
+					}
+				}
+			}
 #ifdef HARDWARE_OUTLINES
 			else if( !strcmp( key, "_outlinecolor" ) )
 			{
@@ -1341,7 +1367,7 @@ static void Mod_ApplySuperStylesToFace( const rdface_t *in, msurface_t *out )
 	{
 		lightmaps[j] = LittleLong( in->lm_texnum[j] );
 
-		if( lightmaps[j] < 0 || out->facetype == FACETYPE_FLARE || lightmaps[j] >= loadmodel_numlightmaps )
+		if( lightmaps[j] < 0 || out->facetype == FACETYPE_FLARE || lightmaps[j] >= loadmodel_numlightmaps || in->lightmapStyles[j] == 255 )
 		{
 			lmRects[j] = NULL;
 			lightmaps[j] = -1;
@@ -1357,7 +1383,7 @@ static void Mod_ApplySuperStylesToFace( const rdface_t *in, msurface_t *out )
 			{
 				mesh = out->mesh;
 				lmArray = mesh->lmstArray[j][0];
-				for( k = 0; k < mesh->numVertexes; k++, lmArray += 2 )
+				for( k = 0; k < mesh->numVerts; k++, lmArray += 2 )
 				{
 					lmArray[0] = (double)( lmArray[0] ) * lmRects[j]->texMatrix[0][0] + lmRects[j]->texMatrix[0][1];
 					lmArray[1] = (double)( lmArray[1] ) * lmRects[j]->texMatrix[1][0] + lmRects[j]->texMatrix[1][1];
@@ -1382,7 +1408,7 @@ static void Mod_Finish( const lump_t *faces, const lump_t *light, vec3_t gridSiz
 	mfog_t *testFog;
 	qboolean globalFog;
 
-	// remembe the BSP format just in case 
+	// remembe the BSP format just in case
 	loadbmodel->format = mod_bspFormat;
 
 	// set up lightgrid

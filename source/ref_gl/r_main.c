@@ -56,7 +56,7 @@ static qbyte r_entVisBits[MAX_EDICTS/8];
 int unsigned r_pvsframecount;    // bumped when going to a new PVS
 int unsigned r_framecount;       // used for dlight push checking
 
-int unsigned c_brush_polys, c_world_leafs;
+int unsigned c_brush_polys, c_world_leafs, c_world_verts, c_world_tris, c_world_vbos;
 
 int unsigned r_mark_leaves, r_world_node;
 int unsigned r_add_polys, r_add_entities;
@@ -317,6 +317,45 @@ void GL_FrontFace( int front )
 {
 	qglFrontFace( front ? GL_CW : GL_CCW );
 	glState.frontFace = front;
+}
+
+/*
+=============
+GL_BindBuffer
+=============
+*/
+void GL_BindBuffer( int target, int buffer )
+{
+	if( !glConfig.ext.vertex_buffer_object )
+		return;
+
+	if( target == GL_ARRAY_BUFFER_ARB )
+	{
+		if( buffer != glState.currentArrayVBO )
+		{
+			qglBindBufferARB( target, buffer );
+			glState.currentArrayVBO = buffer;
+		}
+	}
+	else if ( target == GL_ELEMENT_ARRAY_BUFFER_ARB )
+	{
+		if( buffer != glState.currentElemArrayVBO )
+		{
+			qglBindBufferARB( target, buffer );
+			glState.currentElemArrayVBO = buffer;
+		}
+	}
+}
+
+/*
+================
+GL_IsAlphaBlending
+================
+*/
+qboolean GL_IsAlphaBlending( int blendsrc, int blenddst )
+{
+	return ( blendsrc == GLSTATE_SRCBLEND_SRC_ALPHA || blenddst == GLSTATE_DSTBLEND_SRC_ALPHA ) ||
+		( blendsrc == GLSTATE_SRCBLEND_ONE_MINUS_SRC_ALPHA || blenddst == GLSTATE_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 }
 
 /*
@@ -686,11 +725,12 @@ static qboolean R_PushSprite( const meshbuffer_t *mb, float rotation, float righ
 	{
 		for( i = 0; i < 4; i++ )
 			VectorAdd( spr_xyz[i], e->origin, spr_xyz[i] );
-		R_PushMesh( &spr_mesh, features );
+
+		R_PushMesh( NULL, &spr_mesh, features );
 		return qfalse;
 	}
 
-	R_PushMesh( &spr_mesh, MF_NONBATCHED | features | ( r_shownormals->integer ? MF_NORMALS : 0 )  );
+	R_PushMesh( NULL, &spr_mesh, MF_NONBATCHED | features | ( r_shownormals->integer ? MF_NORMALS : 0 )  );
 	return qtrue;
 }
 
@@ -705,7 +745,10 @@ static void R_PushFlareSurf( const meshbuffer_t *mb )
 	vec4_t color;
 	vec3_t origin, point, v;
 	vec3_t v_left, v_up;
-	float radius = r_flaresize->value, colorscale, depth;
+	float radius = r_flaresize->value, colorscale;
+#if 0
+	GLfloat depth;
+#endif
 	float up = radius, down = -radius, left = -radius, right = radius;
 	mbrushmodel_t *bmodel = ( mbrushmodel_t * )ri.currentmodel->extradata;
 	msurface_t *surf = &bmodel->surfaces[mb->infokey - 1];
@@ -727,9 +770,11 @@ static void R_PushFlareSurf( const meshbuffer_t *mb )
 	if( v[1] < ri.refdef.y || v[1] > ri.refdef.y + ri.refdef.height )
 		return;
 
+#if 0
 	qglReadPixels( (int)( v[0] /* + 0.5f*/ ), (int)( v[1] /* + 0.5f*/ ), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth );
 	if( depth + 1e-4 < v[2] )
 		return; // occluded
+#endif
 
 	VectorCopy( ri.viewAxis[1], v_left );
 	VectorCopy( ri.viewAxis[2], v_up );
@@ -745,7 +790,12 @@ static void R_PushFlareSurf( const meshbuffer_t *mb )
 	VectorMA( point, left, v_left, spr_xyz[1] );
 	VectorMA( point, right, v_left, spr_xyz[2] );
 
-	colorscale = 255.0 / r_flarefade->value;
+    VectorSubtract( ri.viewOrigin, origin, point );
+    VectorNormalize( point );
+    colorscale = DotProduct( ri.viewAxis[0], point );
+    colorscale = colorscale * colorscale;
+
+	colorscale = 255.0 * colorscale / r_flarefade->value;
 	Vector4Set( color,
 		surf->color[0] * colorscale,
 		surf->color[1] * colorscale,
@@ -759,7 +809,7 @@ static void R_PushFlareSurf( const meshbuffer_t *mb )
 
 	MB_NUM2SHADER( mb->shaderkey, shader );
 
-	R_PushMesh( &spr_mesh, MF_NOCULL | MF_TRIFAN | shader->features | ( r_shownormals->integer ? MF_NORMALS : 0 )  );
+	R_PushMesh( NULL, &spr_mesh, MF_NOCULL | MF_TRIFAN | shader->features | ( r_shownormals->integer ? MF_NORMALS : 0 )  );
 }
 
 /*
@@ -808,7 +858,7 @@ static void R_PushCorona( const meshbuffer_t *mb )
 
 	MB_NUM2SHADER( mb->shaderkey, shader );
 
-	R_PushMesh( &spr_mesh, MF_NOCULL | MF_TRIFAN | shader->features | ( r_shownormals->integer ? MF_NORMALS : 0 ) );
+	R_PushMesh( NULL, &spr_mesh, MF_NOCULL | MF_TRIFAN | shader->features | ( r_shownormals->integer ? MF_NORMALS : 0 ) );
 }
 
 #ifdef QUAKE2_JUNK
@@ -883,9 +933,9 @@ static void R_AddSpriteModelToList( entity_t *e )
 
 	// select skin
 	if( e->customShader )
-		mb = R_AddMeshToList( MB_MODEL, R_FogForSphere( e->origin, frame->radius ), e->customShader, -1 );
+		mb = R_AddMeshToList( MB_MODEL, R_FogForSphere( e->origin, frame->radius ), e->customShader, -1, NULL, 0, 0 );
 	else
-		mb = R_AddMeshToList( MB_MODEL, R_FogForSphere( e->origin, frame->radius ), frame->shader, -1 );
+		mb = R_AddMeshToList( MB_MODEL, R_FogForSphere( e->origin, frame->radius ), frame->shader, -1, NULL, 0, 0 );
 	if( mb )
 		mb->shaderkey |= ( bound( 1, 0x4000 - (unsigned int)dist, 0x4000 - 1 ) << 12 );
 }
@@ -908,7 +958,7 @@ static void R_AddSpritePolyToList( entity_t *e )
 	if( dist < 0 )
 		return; // cull it because we don't want to sort unneeded things
 
-	mb = R_AddMeshToList( MB_SPRITE, R_FogForSphere( e->origin, e->radius ), e->customShader, -1 );
+	mb = R_AddMeshToList( MB_SPRITE, R_FogForSphere( e->origin, e->radius ), e->customShader, -1, NULL, 0, 0 );
 	if( mb )
 		mb->shaderkey |= ( bound( 1, 0x4000 - (unsigned int)dist, 0x4000 - 1 ) << 12 );
 }
@@ -992,7 +1042,7 @@ void R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2,
 	// lower-left
 	Vector2Set( pic_xyz[0], x, y );
 	Vector2Set( pic_st[0], s1, t1 );
-	Vector4Set( pic_colors[0], R_FloatToByte( color[0] ), R_FloatToByte( color[1] ), 
+	Vector4Set( pic_colors[0], R_FloatToByte( color[0] ), R_FloatToByte( color[1] ),
 		R_FloatToByte( color[2] ), R_FloatToByte( color[3] ) );
 	bcolor = *(int *)pic_colors[0];
 
@@ -1027,7 +1077,7 @@ void R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2,
 	if( shader->flags & SHADER_VIDEOMAP )
 		R_UploadCinematicShader( shader );
 
-	R_PushMesh( &pic_mesh, MF_TRIFAN | shader->features | ( r_shownormals->integer ? MF_NORMALS : 0 ) );
+	R_PushMesh( NULL, &pic_mesh, MF_TRIFAN | shader->features | ( r_shownormals->integer ? MF_NORMALS : 0 ) );
 }
 
 /*
@@ -1170,9 +1220,9 @@ void R_InitOutlines( void )
 R_AddModelMeshOutline
 ===============
 */
-void R_AddModelMeshOutline( unsigned int modhandle, mfog_t *fog, int meshnum )
+void R_AddModelMeshOutline( unsigned int modhandle, const mfog_t *fog, int meshnum )
 {
-	meshbuffer_t *mb = R_AddMeshToList( MB_MODEL, fog, r_outlineShader, -( meshnum+1 ) );
+	meshbuffer_t *mb = R_AddMeshToList( MB_MODEL, fog, r_outlineShader, -( meshnum+1 ), NULL, 0, 0 );
 	if( mb )
 		mb->LODModelHandle = modhandle;
 }
@@ -1469,7 +1519,12 @@ static void R_Clear( int bitMask )
 
 	bits = GL_DEPTH_BUFFER_BIT;
 
-	if( (!( ri.refdef.rdflags & RDF_NOWORLDMODEL ) && R_FASTSKY()) || R_ActiveFBObject() )
+
+	if( (!( ri.refdef.rdflags & RDF_NOWORLDMODEL ) && R_FASTSKY())
+    // do not clear the color buffer in case we're rendering to a framebuffer object
+    // and a skyportal is present: since the skyportal uses the same FBO that'd clear
+    // the skyportal view we've just rendered
+	 || (R_ActiveFBObject() && !(ri.refdef.rdflags & RDF_SKYPORTALINVIEW)) )
 		bits |= GL_COLOR_BUFFER_BIT;
 	if( glState.stencilEnabled )
 		bits |= GL_STENCIL_BUFFER_BIT;
@@ -1898,7 +1953,8 @@ void R_RenderDebugSurface( void )
 		ri.currententity = &r_entities[tr.ent];
 
 		R_ClearMeshList( ri.meshlist );
-		R_AddMeshToList( MB_MODEL, NULL, r_debug_surface->shader, r_debug_surface - r_worldbrushmodel->surfaces + 1 );
+		R_AddMeshToList( MB_MODEL, NULL, r_debug_surface->shader, r_debug_surface - r_worldbrushmodel->surfaces + 1,
+			r_debug_surface->mesh, r_debug_surface->numVertexes, r_debug_surface->numElems );
 		R_DrawTriangleOutlines( qtrue, qfalse );
 	}
 }
@@ -1918,7 +1974,7 @@ void R_RenderView( const refdef_t *fd )
 	ri.refdef = *fd;
 
 	// enable PVS culling for some rendering instances
-	if( ri.refdef.rdflags & RDF_PORTALINVIEW 
+	if( ri.refdef.rdflags & RDF_PORTALINVIEW
 		|| ((ri.refdef.rdflags & RDF_SKYPORTALINVIEW) && !ri.refdef.skyportal.noEnts) )
 		ri.params |= RP_PVSCULL;
 
@@ -2126,7 +2182,7 @@ void R_BeginFrame( float cameraSeparation, qboolean forceClear )
 	if( r_clear->integer || forceClear )
 	{
 		byte_vec4_t color;
-		
+
 		Vector4Copy( mapConfig.environmentColor, color );
 		qglClearColor( color[0]*( 1.0/255.0 ), color[1]*( 1.0/255.0 ), color[2]*( 1.0/255.0 ), 1 );
 		qglClear( GL_COLOR_BUFFER_BIT );
@@ -2319,6 +2375,9 @@ void R_RenderScene( const refdef_t *fd )
 
 	c_brush_polys = 0;
 	c_world_leafs = 0;
+	c_world_verts = 0;
+	c_world_tris = 0;
+	c_world_vbos = 0;
 
 	r_mark_leaves =
 		r_add_polys =
@@ -2355,6 +2414,9 @@ void R_RenderScene( const refdef_t *fd )
 
 	if( gl_finish->integer && !gl_delayfinish->integer && !( fd->rdflags & RDF_NOWORLDMODEL ) )
 		qglFinish();
+
+	// update the fd pointer to reflect possible fov adjustments
+	fd = &ri.refdef;
 
 	R_ClearShadowmaps();
 

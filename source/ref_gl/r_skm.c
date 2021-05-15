@@ -101,6 +101,7 @@ void Mod_LoadSkeletalPose( char *name, model_t *mod, void *buffer )
 		pinbonepose = ( dskpbonepose_t * )( ( qbyte * )pinmodel + LittleLong( pinframe->ofs_bonepositions ) );
 		poutbonepose = poutframe->boneposes = ( bonepose_t * )membuffer; membuffer += sizeof( bonepose_t ) * poutmodel->numbones;
 
+		Q_strncpyz( poutframe->name, pinframe->name, sizeof( poutframe->name ) );
 		ClearBounds( poutframe->mins, poutframe->maxs );
 
 		for( j = 0; j < poutmodel->numbones; j++, pinbonepose++, poutbonepose++ )
@@ -808,7 +809,7 @@ void R_SkeletalTransformVerts_GCC( int numverts, const unsigned int *bones, cons
 			//ov[0] = v[0] * pose[0] + v[1] * pose[4] + v[2] * pose[8] + pose[12];
 			//ov[1] = v[0] * pose[1] + v[1] * pose[5] + v[2] * pose[9] + pose[13];
 			//ov[2] = v[0] * pose[2] + v[1] * pose[6] + v[2] * pose[10] + pose[14];
-			
+
 			accumulator = _mm_mul_ps( v0_sse, pose[0] );
 			accumulator = _mm_add_ps( accumulator, _mm_mul_ps( v1_sse, pose[1] ) );
 			accumulator = _mm_add_ps( accumulator, _mm_mul_ps( v2_sse, pose[2] ) );
@@ -872,7 +873,7 @@ static void R_SkeletalTransformNormals_GCC( int numverts, const unsigned int *bo
 	for( ; numverts; numverts--, v += 4, ov += 4, bones += SKM_MAX_WEIGHTS, influences += SKM_MAX_WEIGHTS )
 	{
 		__m128 accumulator;
-		
+
 		__m128 v0_sse, v1_sse, v2_sse, v3_sse;
 		    v0_sse = v1_sse = v2_sse = v3_sse = _mm_load_ps( v );
 		    v0_sse = _mm_shuffle_ps( v0_sse,v0_sse, 0x00 );
@@ -892,7 +893,7 @@ static void R_SkeletalTransformNormals_GCC( int numverts, const unsigned int *bo
 			//ov[0] = v[0] * pose[0] + v[1] * pose[4] + v[2] * pose[8] + pose[12];
 			//ov[1] = v[0] * pose[1] + v[1] * pose[5] + v[2] * pose[9] + pose[13];
 			//ov[2] = v[0] * pose[2] + v[1] * pose[6] + v[2] * pose[10] + pose[14];
-			
+
 			accumulator = _mm_mul_ps( v0_sse, pose[0] );
 			accumulator = _mm_add_ps( accumulator, _mm_mul_ps( v1_sse, pose[1] ) );
 			accumulator = _mm_add_ps( accumulator, _mm_mul_ps( v2_sse, pose[2] ) );
@@ -1432,7 +1433,7 @@ static void R_DrawBonesFrameLerp( const meshbuffer_t *mb, float backlerp )
 pushmesh:
 	skm_mesh.elems = mesh->elems;
 	skm_mesh.numElems = mesh->numtris * 3;
-	skm_mesh.numVertexes = mesh->numverts;
+	skm_mesh.numVerts = mesh->numverts;
 	skm_mesh.xyzArray = xyzArray;
 	skm_mesh.stArray = mesh->stArray;
 	skm_mesh.normalsArray = normalsArray;
@@ -1440,7 +1441,7 @@ pushmesh:
 
 	R_RotateForEntity( e );
 
-	R_PushMesh( &skm_mesh, features );
+	R_PushMesh( NULL, &skm_mesh, features );
 	R_RenderMeshBuffer( mb );
 }
 
@@ -1555,7 +1556,7 @@ qboolean R_CullSkeletalModel( entity_t *e )
 
 		if( shader && ( shader->sort <= SHADER_SORT_ALPHATEST ) )
 		{
-			mb = R_AddMeshToList( MB_MODEL, NULL, R_PlanarShadowShader(), -( i+1 ) );
+			mb = R_AddMeshToList( MB_MODEL, NULL, R_PlanarShadowShader(), -( i+1 ), NULL, 0, 0 );
 			if( mb )
 				mb->LODModelHandle = modhandle;
 		}

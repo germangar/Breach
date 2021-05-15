@@ -169,11 +169,12 @@ typedef struct
 
 	qboolean		allowCDS;
 
-	int			maxTextureSize
-				,maxTextureUnits
-				,maxTextureCubemapSize
-				,maxTextureSize3D
-				,maxTextureFilterAnisotropic;
+	int				maxTextureSize
+					,maxTextureUnits
+					,maxTextureCubemapSize
+					,maxTextureSize3D
+					,maxTextureFilterAnisotropic
+					,maxVaryingFloats;
 
 	glextinfo_t ext;
 } glconfig_t;
@@ -197,6 +198,8 @@ typedef struct
 	qboolean		*texIdentityMatrix;
 	int				*genSTEnabled;			// 0 - disabled, OR 1 - S, OR 2 - T, OR 4 - R
 	int				*texCoordArrayMode;		// 0 - disabled, 1 - enabled, 2 - cubemap
+	int 			currentArrayVBO;
+	int 			currentElemArrayVBO;
 
 	int				faceCull;
 	int				frontFace;
@@ -225,14 +228,16 @@ IMPLEMENTATION SPECIFIC FUNCTIONS
 
 void		GLimp_BeginFrame( void );
 void		GLimp_EndFrame( void );
-int			GLimp_Init( void *hinstance, void *wndproc );
+int			GLimp_Init( void *hinstance, void *wndproc/*, void *parenthWnd*/ );
 void	    GLimp_Shutdown( void );
 int			GLimp_SetMode( int mode, qboolean fullscreen );
-void	    GLimp_AppActivate( qboolean active );
+int			GLimp_GetCurrentMode( void );
+void	    GLimp_AppActivate( qboolean active/*, qboolean destroy*/ );
 qboolean	GLimp_GetGammaRamp( size_t stride, unsigned short *ramp );
 void		GLimp_SetGammaRamp( size_t stride, unsigned short *ramp );
 
 void		VID_NewWindow( int width, int height );
 qboolean	VID_GetModeInfo( int *width, int *height, qboolean *wideScreen, int mode );
+int			VID_GetModeNum( int width, int height );
 
 #endif /*__R_GLIMP_H__*/

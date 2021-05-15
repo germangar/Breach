@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 	The above copyright notice and this permission notice shall be included
 	in all copies or substantial portions of the Software.
-	
+
 	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
@@ -49,7 +49,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 /*
-	The following code is loosely based on DynGL code by Joseph Carter 
+	The following code is loosely based on DynGL code by Joseph Carter
 	and Zephaniah E. Hull. Adapted by Victor Luchits for qfusion project.
 */
 
@@ -530,6 +530,21 @@ QGL_FUNC(void, glVertex3fv, (const GLfloat *v));
 QGL_FUNC(void, glVertexPointer, (GLint size, GLenum type, GLsizei stride, const GLvoid *pointer));
 QGL_FUNC(void, glViewport, (GLint x, GLint y, GLsizei width, GLsizei height));
 
+QGL_FUNC(void, glFogfv, (GLenum pname, const GLfloat *params));
+QGL_FUNC(void, glFogiv, (GLenum pname, const GLint *params));
+QGL_FUNC(void, glFogi, (GLenum pname, const GLint param));
+
+QGL_FUNC(void, glLightModelf, (GLenum pname, GLfloat param));
+QGL_FUNC(void, glLightModelfv, (GLenum pname, const GLfloat *params));
+QGL_FUNC(void, glLightModeli, (GLenum pname, GLint param));
+QGL_FUNC(void, glLightModeliv, (GLenum pname, const GLint *params));
+QGL_FUNC(void, glLightf, (GLenum light, GLenum pname, GLfloat param));
+QGL_FUNC(void, glLightfv, (GLenum light, GLenum pname, const GLfloat *params));
+QGL_FUNC(void, glLighti, (GLenum light, GLenum pname, GLint param));
+QGL_FUNC(void, glLightiv, (GLenum light, GLenum pname, const GLint *params));
+
+QGL_FUNC(void, glPixelStorei, (GLenum pname, GLint param));
+
 QGL_EXT(void, glLockArraysEXT, (int , int ));
 QGL_EXT(void, glUnlockArraysEXT, (void));
 QGL_EXT(void, glSelectTextureSGIS, (GLenum ));
@@ -540,7 +555,7 @@ QGL_EXT(void, glBindBufferARB, (GLenum target, GLuint buffer));
 QGL_EXT(void, glDeleteBuffersARB, (GLsizei n, const GLuint *buffers));
 QGL_EXT(void, glGenBuffersARB, (GLsizei n, GLuint *buffers));
 QGL_EXT(void, glBufferDataARB, (GLenum target, GLsizeiptrARB size, const GLvoid *data, GLenum usage));
-QGL_EXT(void, glBufferDataARB, (GLenum target, GLsizeiptrARB size, const GLvoid *data, GLenum usage));
+QGL_EXT(void, glBufferSubDataARB, (GLenum target, GLintptrARB offset, GLsizeiptrARB size, const GLvoid *data));
 QGL_EXT(void, glTexImage3D, (GLenum target, GLint level, GLenum internalFormat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const GLvoid *pixels));
 QGL_EXT(void, glTexSubImage3D, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const GLvoid *pixels));
 

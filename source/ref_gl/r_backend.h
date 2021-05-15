@@ -52,7 +52,8 @@ extern vec4_t *normalsArray;
 extern vec4_t *sVectorsArray;
 extern vec2_t *coordsArray;
 extern vec2_t *lightmapCoordsArray[MAX_LIGHTMAPS];
-extern byte_vec4_t colorArray[MAX_ARRAY_VERTS];
+extern byte_vec4_t *colorArray;
+extern byte_vec4_t colorArrayCopy[MAX_ARRAY_VERTS];
 
 extern int r_numVertexBufferObjects;
 extern GLuint r_vertexBufferObjects[MAX_VERTEX_BUFFER_OBJECTS];
@@ -64,7 +65,8 @@ extern int r_features;
 typedef struct
 {
 	unsigned int numVerts, numElems, numColors;
-	unsigned int c_totalVerts, c_totalTris, c_totalFlushes, c_totalKeptLocks;
+	unsigned int c_totalVerts, c_totalTris, c_totalVboVerts, c_totalVboTris, c_totalDraws, c_totalKeptLocks;
+	size_t c_totalMemCpy;
 } rbackacc_t;
 
 extern rbackacc_t r_backacc;
@@ -88,29 +90,30 @@ void R_BackendResetPassMask( void );
 void R_LockArrays( int numverts );
 void R_UnlockArrays( void );
 void R_UnlockArrays( void );
+void R_DrawElements( void );
 void R_FlushArrays( void );
 void R_FlushArraysMtex( void );
 void R_ClearArrays( void );
 
 static inline qboolean R_MeshOverflow( const mesh_t *mesh )
 {
-	return ( r_backacc.numVerts + mesh->numVertexes > MAX_ARRAY_VERTS ||
+	return ( r_backacc.numVerts + mesh->numVerts > MAX_ARRAY_VERTS ||
 		r_backacc.numElems + mesh->numElems > MAX_ARRAY_ELEMENTS );
 }
 
-static inline qboolean R_MeshOverflow2( const mesh_t *mesh1, const mesh_t *mesh2 )
+static inline qboolean R_MeshOverflow2( const meshbuffer_t *mb, const meshbuffer_t *nextmb )
 {
-	return ( r_backacc.numVerts + mesh1->numVertexes + mesh2->numVertexes > MAX_ARRAY_VERTS ||
-		r_backacc.numElems + mesh1->numElems + mesh2->numElems > MAX_ARRAY_ELEMENTS );
+	return ( r_backacc.numVerts + mb->numVerts + nextmb->numVerts > MAX_ARRAY_VERTS ||
+		r_backacc.numElems + mb->numElems + nextmb->numElems > MAX_ARRAY_ELEMENTS );
 }
 
 static inline qboolean R_InvalidMesh( const mesh_t *mesh )
 {
-	return ( !mesh->numVertexes || !mesh->numElems ||
-		mesh->numVertexes > MAX_ARRAY_VERTS || mesh->numElems > MAX_ARRAY_ELEMENTS );
+	return ( !mesh->numVerts || !mesh->numElems ||
+		mesh->numVerts > MAX_ARRAY_VERTS || mesh->numElems > MAX_ARRAY_ELEMENTS );
 }
 
-void R_PushMesh( const mesh_t *mesh, int features );
+void R_PushMesh( const mesh_vbo_t *vbo, const mesh_t *mesh, int features );
 void R_RenderMeshBuffer( const meshbuffer_t *mb );
 
 #endif /*__R_BACKEND_H__*/

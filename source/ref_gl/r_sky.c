@@ -75,7 +75,7 @@ skydome_t *R_CreateSkydome( float skyheight, shader_t **farboxShaders, shader_t	
 
 	for( i = 0, mesh = skydome->meshes; i < 6; i++, mesh++ )
 	{
-		mesh->numVertexes = POINTS_LEN;
+		mesh->numVerts = POINTS_LEN;
 		mesh->xyzArray = ( vec4_t * )buffer; buffer += sizeof( vec4_t ) * POINTS_LEN;
 		mesh->normalsArray = ( vec4_t * )buffer; buffer += sizeof( vec4_t ) * POINTS_LEN;
 		if( i != 5 )
@@ -224,7 +224,7 @@ static void R_DrawSkySide( skydome_t *skydome, int side, shader_t *shader, int f
 	mbuffer->sortkey = MB_FOG2NUM( r_skyfog );
 
 	skydome->meshes[side].stArray = skydome->linearStCoords[side];
-	R_PushMesh( &skydome->meshes[side], features );
+	R_PushMesh( NULL, &skydome->meshes[side], features );
 	R_RenderMeshBuffer( mbuffer );
 }
 
@@ -390,7 +390,7 @@ qboolean R_DrawSky( shader_t *shader )
 			mbuffer->sortkey = MB_FOG2NUM( r_skyfog );
 
 			skydome->meshes[i].stArray = skydome->sphereStCoords[i];
-			R_PushMesh( &skydome->meshes[i], features );
+			R_PushMesh( NULL, &skydome->meshes[i], features );
 		}
 
 		if( flush )

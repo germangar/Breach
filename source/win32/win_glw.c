@@ -153,7 +153,22 @@ static qboolean VID_CreateWindow( int width, int height, qboolean fullscreen )
 	return qtrue;
 }
 
+/*
+** GLimp_GetCurrentMode
+*/
+/*
+int GLimp_GetCurrentMode( void )
+{
+	DEVMODE dm;
+		
+	memset( &dm, 0, sizeof( dm ) );
+	dm.dmSize = sizeof( dm );
 
+	EnumDisplaySettings( NULL, ENUM_CURRENT_SETTINGS, &dm );
+
+	return VID_GetModeNum( dm.dmPelsWidth, dm.dmPelsHeight );
+}
+*/
 /*
 ** GLimp_SetMode
 */

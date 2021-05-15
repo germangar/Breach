@@ -63,7 +63,8 @@ enum
 	SHADER_PORTAL					= 1 << 12,
 	SHADER_PORTAL_CAPTURE			= 1 << 13,
 	SHADER_PORTAL_CAPTURE2			= 1 << 14,
-	SHADER_NO_TEX_FILTERING			= 1 << 15
+	SHADER_NO_TEX_FILTERING			= 1 << 15,
+	SHADER_ALLDETAIL				= 1 << 16
 };
 
 // sorting
@@ -275,6 +276,7 @@ typedef struct shader_s
 	qbyte				fog_color[4];
 	float				fog_dist, fog_clearDist;
 
+	float				gloss_exponent;
 	float				offsetmapping_scale;
 
 	struct shader_s		*hash_next;
@@ -291,6 +293,9 @@ extern skydome_t *r_skydomes[MAX_SHADERS];
 #define		Shader_Realloc( data, size ) Mem_Realloc( data, size )
 #define		Shader_Free( data ) Mem_Free( data )
 #define		Shader_Sortkey( shader, sort ) ( ( ( sort )<<26 )|( shader-r_shaders ) )
+
+#define 	Shader_UseTextureFog(s) ( ( (s)->sort <= SHADER_SORT_ALPHATEST && \
+				( (s)->flags & ( SHADER_DEPTHWRITE|SHADER_SKY ) ) ) || (s)->fog_dist )
 
 void		R_InitShaders( qboolean silent );
 void		R_ShutdownShaders( void );

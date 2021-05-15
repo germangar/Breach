@@ -884,7 +884,7 @@ static void R_DrawAliasFrameLerp( const meshbuffer_t *mb, float backlerp )
 
 	alias_mesh.elems = mesh->elems;
 	alias_mesh.numElems = mesh->numtris * 3;
-	alias_mesh.numVertexes = mesh->numverts;
+	alias_mesh.numVerts = mesh->numverts;
 
 	alias_mesh.stArray = mesh->stArray;
 	if( features & MF_NORMALS )
@@ -894,7 +894,7 @@ static void R_DrawAliasFrameLerp( const meshbuffer_t *mb, float backlerp )
 
 	R_RotateForEntity( e );
 
-	R_PushMesh( &alias_mesh, features );
+	R_PushMesh( NULL, &alias_mesh, features );
 	R_RenderMeshBuffer( mb );
 }
 
@@ -967,7 +967,7 @@ qboolean R_CullAliasModel( entity_t *e )
 {
 	int i, j, clipped;
 	qboolean frustum, query;
-	unsigned int modhandle, numtris;
+	unsigned int modhandle;
 	model_t	*mod;
 	shader_t *shader;
 	meshbuffer_t *mb;
@@ -995,7 +995,6 @@ qboolean R_CullAliasModel( entity_t *e )
 		|| R_CullPlanarShadow( e, alias_mins, alias_maxs, query ) )
 		return frustum; // entity is not in PVS or shadow is culled away by frustum culling
 
-	numtris = 0;
 	for( i = 0, mesh = aliasmodel->meshes; i < aliasmodel->nummeshes; i++, mesh++ )
 	{
 		shader = NULL;
@@ -1021,7 +1020,7 @@ qboolean R_CullAliasModel( entity_t *e )
 
 		if( shader && ( shader->sort <= SHADER_SORT_ALPHATEST ) )
 		{
-			mb = R_AddMeshToList( MB_MODEL, NULL, R_PlanarShadowShader(), -( i+1 ) );
+			mb = R_AddMeshToList( MB_MODEL, NULL, R_PlanarShadowShader(), -( i+1 ), NULL, 0, 0 );
 			if( mb )
 				mb->LODModelHandle = modhandle;
 		}

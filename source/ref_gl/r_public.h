@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../cgame/ref.h"
 
-int			R_Init( void *hinstance, void *hWnd, qboolean verbose );
+int			R_Init( void *hinstance, void *hWnd,/* void *parentWid,*/ qboolean verbose );
 void		R_Restart( void );
 void		R_Shutdown( qboolean verbose );
 
@@ -72,6 +72,6 @@ void		R_BeginAviDemo( void );
 void		R_WriteAviFrame( int frame, qboolean scissor );
 void		R_StopAviDemo( void );
 
-void		GLimp_AppActivate( qboolean active );
+void		GLimp_AppActivate( qboolean active/*, qboolean destroy*/ );
 
 #endif /*__R_PUBLIC_H__*/

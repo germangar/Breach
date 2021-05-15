@@ -313,7 +313,7 @@ R_CullSprite
 qboolean R_CullSprite( entity_t *e )
 {
 	float dist;
-	
+
 	if( e->radius <= 0 || e->customShader == NULL || e->scale <= 0 )
 		return qtrue;
 
@@ -479,7 +479,7 @@ void R_AddOccludingSurface( msurface_t *surf, shader_t *shader )
 	}
 	r_occludersQueued = qtrue;
 
-	R_PushMesh( surf->mesh, MF_NOCOLORWRITE );
+	R_PushMesh( surf->vbo, surf->mesh, MF_NOCOLORWRITE );
 }
 
 /*
@@ -533,7 +533,7 @@ int R_IssueOcclusionQuery( int query, entity_t *e, vec3_t mins, vec3_t maxs )
 
 	R_RenderOccludingSurfaces();
 
-	mesh.numVertexes = 8;
+	mesh.numVerts = 8;
 	mesh.xyzArray = verts;
 	mesh.numElems = 36;
 	mesh.elems = indices;
@@ -547,7 +547,7 @@ int R_IssueOcclusionQuery( int query, entity_t *e, vec3_t mins, vec3_t maxs )
 
 	R_RotateForEntity( e );
 	R_BackendSetPassMask( GLSTATE_MASK & ~GLSTATE_DEPTHWRITE );
-	R_PushMesh( &mesh, MF_NONBATCHED|MF_NOCULL );
+	R_PushMesh( NULL, &mesh, MF_NONBATCHED|MF_NOCULL );
 	R_RenderMeshBuffer( &r_occluderMB );
 
 	qglEndQueryARB( GL_SAMPLES_PASSED_ARB );
