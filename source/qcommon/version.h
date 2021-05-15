@@ -59,6 +59,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define APP_COPYRIGHT_OWNER				"German Garcia and Victor Luchits"
 #endif
 
+
+#ifndef APP_SCREENSHOTS_PREFIX
+#define APP_SCREENSHOTS_PREFIX			APPLICATION"_"
+#endi
+
 #undef STR_HELPER
 #undef STR_TOSTR
 
