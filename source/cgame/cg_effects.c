@@ -121,73 +121,50 @@ void CG_AddLightStyles( void )
    ==============================================================
  */
 
+
 typedef struct cdlight_s
 {
-	struct cdlight_s *prev, *next;
 	vec3_t color;
 	vec3_t origin;
 	float radius;
 	struct shader_s *shader;
 } cdlight_t;
 
-cdlight_t cg_dlights[MAX_DLIGHTS];
-cdlight_t cg_dlights_headnode, *cg_free_dlights;
+static cdlight_t cg_dlights[MAX_DLIGHTS];
+static int cg_numDlights;
 
 /*
-   ================
-   CG_ClearDlights
-   ================
- */
-void CG_ClearDlights( void )
+================
+CG_ClearDlights
+================
+*/
+/*static*/ void CG_ClearDlights( void )
 {
-	int i;
-
 	memset( cg_dlights, 0, sizeof( cg_dlights ) );
-
-	// link dynamic lights
-	cg_free_dlights = cg_dlights;
-	cg_dlights_headnode.prev = &cg_dlights_headnode;
-	cg_dlights_headnode.next = &cg_dlights_headnode;
-	for( i = 0; i < MAX_DLIGHTS - 1; i++ )
-		cg_dlights[i].next = &cg_dlights[i+1];
+	cg_numDlights = 0;
 }
 
 /*
-   ===============
-   CG_AllocDlight
-   ===============
- */
+===============
+CG_AllocDlight
+===============
+*/
 static void CG_AllocDlight( vec3_t origin, float radius, float r, float g, float b, struct shader_s *shader )
 {
 	cdlight_t *dl;
 
 	if( radius <= 0 )
 		return;
+	if( cg_numDlights == MAX_DLIGHTS )
+		return;
 
-	if( cg_free_dlights )
-	{                   // take a free light if possible
-		dl = cg_free_dlights;
-		cg_free_dlights = dl->next;
-	}
-	else
-	{                       // grab the oldest one otherwise
-		dl = cg_dlights_headnode.prev;
-		dl->prev->next = dl->next;
-		dl->next->prev = dl->prev;
-	}
-
+	dl = &cg_dlights[cg_numDlights++];
 	dl->radius = radius;
 	VectorCopy( origin, dl->origin );
 	dl->color[0] = r;
 	dl->color[1] = g;
 	dl->color[2] = b;
 	dl->shader = shader;
-
-	// put the light at the start of the list
-	dl->prev = &cg_dlights_headnode;
-	dl->next = cg_dlights_headnode.next;
-	dl->next->prev = dl;
-	dl->prev->next = dl;
 }
 
 void CG_AddLightToScene( vec3_t org, float radius, float r, float g, float b, struct shader_s *shader )
@@ -196,38 +173,19 @@ void CG_AddLightToScene( vec3_t org, float radius, float r, float g, float b, st
 }
 
 /*
-   =================
-   CG_FreeDlight
-   =================
- */
-static void CG_FreeDlight( cdlight_t *dl )
-{
-	// remove from linked active list
-	dl->prev->next = dl->next;
-	dl->next->prev = dl->prev;
-
-	// insert into linked free list
-	dl->next = cg_free_dlights;
-	cg_free_dlights = dl;
-}
-
-/*
-   ===============
-   CG_AddDlights
-   ===============
- */
+===============
+CG_AddDlights
+===============
+*/
 void CG_AddDlights( void )
 {
-	cdlight_t *dl, *hnode, *next;
+	int i;
+	cdlight_t *dl;
 
-	hnode = &cg_dlights_headnode;
-	for( dl = hnode->next; dl != hnode; dl = next )
-	{
-		next = dl->next;
-
+	for( i = 0, dl = cg_dlights; i < cg_numDlights; i++, dl++ )
 		trap_R_AddLightToScene( dl->origin, dl->radius, dl->color[0], dl->color[1], dl->color[2], dl->shader );
-		CG_FreeDlight( dl );
-	}
+
+	cg_numDlights = 0;
 }
 
 /*
