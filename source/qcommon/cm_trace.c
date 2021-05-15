@@ -27,7 +27,6 @@
 *
 * Set up the planes so that the six floats of a bounding box
 * can just be stored out and get a proper clipping hull structure.
-===================
 */
 void CM_InitBoxHull( cmodel_state_t *cms )
 {

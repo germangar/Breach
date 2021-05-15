@@ -45,11 +45,12 @@ void COM_AddParm( char *parm );
 void COM_Init( void );
 void COM_InitArgv( int argc, char **argv );
 
-char *_ZoneCopyString( const char *in, const char *filename, int fileline );
-char *_TempCopyString( const char *in, const char *filename, int fileline );
+char *TempCopyString( const char *in );
 
+// some hax, because we want to save the file and line where the copy was called
+// from, not the file and line from ZoneCopyString function
+char *_ZoneCopyString( const char *in, const char *filename, int fileline );
 #define ZoneCopyString( in ) _ZoneCopyString( in, __FILE__, __LINE__ )
-#define TempCopyString( in ) _TempCopyString( in, __FILE__, __LINE__ )
 
 int Com_GlobMatch( const char *pattern, const char *text, const qboolean casecmp );
 

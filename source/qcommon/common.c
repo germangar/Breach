@@ -584,16 +584,19 @@ char *_ZoneCopyString( const char *in, const char *filename, int fileline )
 	char *out;
 
 	out = _Mem_Alloc( zoneMemPool, sizeof( char ) * ( strlen( in ) + 1 ), 0, 0, filename, fileline );
-	strcpy( out, in );
+	//out = Mem_ZoneMalloc( sizeof(char) * (strlen(in) + 1) );
+	Q_strncpyz( out, in, sizeof( char ) * ( strlen( in ) + 1 ) );
+
 	return out;
 }
 
-char *_TempCopyString( const char *in, const char *filename, int fileline )
+char *TempCopyString( const char *in )
 {
 	char *out;
 
-	out = _Mem_Alloc( tempMemPool, sizeof( char ) * ( strlen( in ) + 1 ), 0, 0, filename, fileline );
-	strcpy( out, in );
+	out = Mem_TempMalloc( sizeof( char ) * ( strlen( in ) + 1 ) );
+	Q_strncpyz( out, in, sizeof( char ) * ( strlen( in ) + 1 ) );
+
 	return out;
 }
 
@@ -843,7 +846,7 @@ void Com_PageInMemory( qbyte *buffer, int size )
 		paged_total += buffer[i];
 }
 
-//===============================================
+//============================================================================
 
 /*
 * Com_AddPurePakFile
@@ -1252,7 +1255,7 @@ void Qcommon_Frame( unsigned int realmsec )
 {
 	char *s;
 	int time_before = 0, time_between = 0, time_after = 0;
-	int gamemsec;
+	static unsigned int gamemsec;
 
 	if( setjmp( abortframe ) )
 		return; // an ERR_DROP was thrown

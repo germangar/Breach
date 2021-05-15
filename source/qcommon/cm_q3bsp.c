@@ -29,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 static int CM_CreateFacetFromPoints( cmodel_state_t *cms, cbrush_t *facet, vec3_t *verts, int numverts, cshaderref_t *shaderref, cplane_t *brushplanes )
 {
-	int i, j, k;
+	int i, j;
 	int axis, dir;
 	vec3_t normal, mins, maxs;
 	float d, dist;
@@ -115,7 +115,6 @@ static int CM_CreateFacetFromPoints( cmodel_state_t *cms, cbrush_t *facet, vec3_
 	for( i = 0; i < numverts; i++ )
 	{
 		j = ( i + 1 ) % numverts;
-		k = ( i + 2 ) % numverts;
 
 		VectorSubtract( verts[i], verts[j], vec );
 		if( VectorNormalize( vec ) < 0.5 )
