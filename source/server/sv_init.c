@@ -19,7 +19,7 @@
  */
 
 #include "server.h"
-#include "../qcommon/library.h"      // Sys_Library_Extension
+#include "../qcommon/sys_library.h"      // Sys_Library_Extension
 
 server_constant_t svc;              // constant server info (trully persistant since sv_init)
 server_static_t	svs;                // persistant server info

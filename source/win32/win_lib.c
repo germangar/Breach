@@ -20,7 +20,7 @@
 
 #include "../qcommon/qcommon.h"
 
-#include "../qcommon/library.h"
+#include "../qcommon/sys_library.h"
 
 #include <windows.h>
 

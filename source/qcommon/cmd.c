@@ -316,7 +316,7 @@ void Cbuf_Execute( void )
 		i = 0;
 		quotes = qfalse;
 		quoteskip = qfalse;
-		while( cbuf_text_tail != cbuf_text_head && i < sizeof( line ) )
+		while( cbuf_text_tail != cbuf_text_head && i < sizeof( line )-1 )
 		{
 			if( !quoteskip && cbuf_text[cbuf_text_tail] == '"' )
 				quotes = !quotes;
@@ -1126,6 +1126,43 @@ char **Cmd_CompleteAliasBuildList( const char *partial )
 	Trie_FreeDump( dump );
 	return buf;
 }
+
+/*
+============
+Cmd_CheckForCommand
+
+Used by console code to check if text typed is a command/cvar/alias or chat
+============
+*/
+// JALfixme: This uses some wsw 0.6 funciton not declared here.
+/*
+qboolean Cmd_CheckForCommand( char *text )
+{
+	char	cmd[MAX_STRING_CHARS];
+	cmd_alias_t *a;
+	int		i;
+
+	// this is not exactly what cbuf does when extracting lines
+	// for execution, but it works unless you do weird things like
+	// putting the command in quotes
+	for( i = 0; i < MAX_STRING_CHARS - 1; i++ )
+		if( (unsigned char)text[i] <= ' ' || text[i] == ';' )
+			break;
+		else
+			cmd[i] = text[i];
+	cmd[i] = 0;
+
+	if( Cmd_Exists( cmd ) )
+		return qtrue;
+	if( Cvar_Find( cmd ) )
+		return qtrue;
+	if( Trie_Find( cmd_alias_trie, cmd, TRIE_EXACT_MATCH, (void **)&a ) == TRIE_OK )
+		return qtrue;
+	if( Dynvar_Lookup( cmd ) )
+		return qtrue;
+
+	return qfalse;
+}*/
 
 /*
    ============

@@ -493,7 +493,7 @@
     <ClInclude Include="..\qcommon\cvar.h" />
     <ClInclude Include="..\game\g_public.h" />
     <ClInclude Include="..\qcommon\glob.h" />
-    <ClInclude Include="..\qcommon\library.h" />
+    <ClInclude Include="..\qcommon\sys_library.h" />
     <ClInclude Include="..\qcommon\md5.h" />
     <ClInclude Include="..\gameshared\q_arch.h" />
     <ClInclude Include="..\gameshared\q_collision.h" />

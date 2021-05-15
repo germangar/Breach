@@ -69,11 +69,11 @@ static void ML_AddMap( const char *filename, const char *fullname )
 		ML_GetFullnameFromMap( filename, fullname_, sizeof( fullname_ ) );
 		fullname = fullname_;
 	}
-		
+
 	if( !ML_ValidateFullname( fullname ) && *fullname )	// allow empty fullnames
 		return;
 
-	ml_flush = qtrue;	// tell everyone that maplist has changed 
+	ml_flush = qtrue;	// tell everyone that maplist has changed
 	buffer = Mem_ZoneMalloc( sizeof( mapinfo_t ) + strlen( filename ) + 1 + strlen( fullname ) + 1 );
 
 	map = ( mapinfo_t * )buffer;
@@ -139,7 +139,7 @@ static void ML_BuildCache( void )
 			FS_Printf( filenum, "%s\r\n%s\r\n", map->filename, map->fullname );
 		}
 		Trie_FreeDump( dump );
-			
+
 		FS_FCloseFile( filenum );
 	}
 }
@@ -305,7 +305,7 @@ static void ML_InitFromMaps( void )
 				continue;
 
 			len += strlen( filename ) + 1;
-			
+
 			COM_SanitizeFilePath( filename );
 			COM_StripExtension( filename );
 
@@ -504,7 +504,7 @@ const char *ML_GetFilenameExt( const char *fullname, qboolean recursive )
 {
 	mapinfo_t *map;
 	trie_error_t err;
-	char *filename, *fullname2;
+	char *fullname2;
 
 	if( !ml_initialized )
 		return MLIST_NULL;
@@ -512,7 +512,6 @@ const char *ML_GetFilenameExt( const char *fullname, qboolean recursive )
 	if( !ML_ValidateFullname( fullname ) )
 		return MLIST_NULL;
 
-	filename = NULL;
 	fullname2 = Mem_TempMalloc( strlen( fullname ) + 1 );
 	strcpy( fullname2, fullname );
 	Q_strlwr( fullname2 );
@@ -619,7 +618,7 @@ const char *ML_GetFullname( const char *filename )
 //=================
 static void ML_GetFullnameFromMap( const char *filename, char *fullname, size_t len )
 {
-	char *buffer, *line;
+	char *buffer;
 
 	*fullname = '\0';
 
@@ -627,8 +626,8 @@ static void ML_GetFullnameFromMap( const char *filename, char *fullname, size_t 
 	FS_LoadFile( va( "maps/%s.txt", filename ), ( void ** )&buffer, NULL, 0 );
 	if( buffer )
 	{
-		line = strtok( buffer, "\n" );
-		Q_strncpyz( fullname, buffer, len );
+		char *line = buffer;
+		Q_strncpyz( fullname, COM_Parse( &line ), len );
 		FS_FreeFile( buffer );
 		return;
 	}
@@ -722,7 +721,7 @@ size_t ML_GetMapByNum( int num, char *out, size_t size )
 	if( out && (fsize <= size) )
 	{
 		Q_strncpyz( out, map->filename, size );
-		Q_strncpyz( out + strlen( out ) + 1, 
+		Q_strncpyz( out + strlen( out ) + 1,
 			strcmp( map->fullname, MLIST_UNKNOWN_MAPNAME ) ? map->fullname : map->filename, size - (strlen( out ) + 1) );
 	}
 
