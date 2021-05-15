@@ -166,14 +166,12 @@ static const char *_qglGetGLWExtensionsStringInit( void )
 {
 	qwglGetExtensionsStringEXT = ( void * )qglGetProcAddress( (const GLubyte *)"wglGetExtensionsStringEXT" );
 	qglGetGLWExtensionsString = _qglGetGLWExtensionsString;
-
-	return qglGetGLWExtensionsString ();
+	return qglGetGLWExtensionsString();
 }
 
 static const char *_qglGetGLWExtensionsString( void )
 {
 	if( qwglGetExtensionsStringEXT )
-		return qwglGetExtensionsStringEXT ();
-
+		return qwglGetExtensionsStringEXT();
 	return NULL;
 }

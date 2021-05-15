@@ -202,6 +202,7 @@ DLL GLUE
 ==========================================================================
 */
 
+// wsw : pb :  start of paste from Q3
 static byte s_scantokey[128] =
 {
 	//  0           1       2       3       4       5       6       7
@@ -299,6 +300,7 @@ static int IN_MapKey( int key )
 		return result;
 	}
 }
+// wsw : pb :  end of paste from Q3
 
 void AppActivate( BOOL fActive, BOOL minimize )
 {
