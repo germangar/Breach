@@ -291,7 +291,7 @@ void GS_BoxStepSlideMove( move_t *move )
 
 	// if it originally had ground, try to step down
 	if( step_down && !move->output.step && move->ms->velocity[2] <= 0 )
-	{                                                                 // never step down if moving upwards
+	{
 
 		// see if it lost ground
 		VectorMA( move->ms->origin, 0.25, gs.environment.gravityDir, end );
@@ -311,8 +311,16 @@ void GS_BoxStepSlideMove( move_t *move )
 				{
 					int j;
 					vec3_t vec;
+#define LESSSLIDEONSLOPE
+#ifdef LESSSLIDEONSLOPE
 					// offset the origin a little bit along the plane normal
-					VectorMA( trace.endpos, 0.1, trace.plane.normal, vec );
+					VectorMA( trace.endpos, 0.25, trace.plane.normal, vec );
+#else
+					// offset the origin a little bit along the plane normal
+					// It was 0.1 but made it slide sideways on terrain slopes
+					VectorMA( trace.endpos, 0.025, trace.plane.normal, vec );
+#endif
+
 					VectorSubtract( vec, trace.endpos, vec ); // vec is the distance to move
 					// clip this offset to the other clipping planes
 					for( j = 0; j < move->local.numClipPlanes; j++ )

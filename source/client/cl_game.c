@@ -26,6 +26,48 @@ EXTERN_API_FUNC void *GetCGameAPI( void * );
 static mempool_t *cl_gamemodulepool;
 static void *module_handle;
 
+//======================================================================
+
+// CL_GameModule versions of the CM functions passed to the game module
+// they only add sv.cms as the first parameter
+
+//======================================================================
+
+
+static inline int CL_GameModule_CM_NumInlineModels( void ) {
+	return CM_NumInlineModels( cl.cms );
+}
+
+static inline int CL_GameModule_CM_TransformedPointContents( vec3_t p, struct cmodel_s *cmodel, vec3_t origin, vec3_t angles ) {
+	return CM_TransformedPointContents( cl.cms, p, cmodel, origin, angles );
+}
+
+static inline void CL_GameModule_CM_TransformedBoxTrace( trace_t *tr, vec3_t start, vec3_t end, vec3_t mins, vec3_t maxs,
+struct cmodel_s *cmodel, int brushmask, vec3_t origin, vec3_t angles ) {
+	CM_TransformedBoxTrace( cl.cms, tr, start, end, mins, maxs, cmodel, brushmask, origin, angles );
+}
+
+static inline struct cmodel_s *CL_GameModule_CM_InlineModel( int num ) {
+	return CM_InlineModel( cl.cms, num );
+}
+
+static inline struct cmodel_s	*CL_GameModule_CM_ModelForBBox( vec3_t mins, vec3_t maxs ) {
+	return CM_ModelForBBox( cl.cms, mins, maxs );
+}
+
+
+static inline void CL_GameModule_CM_InlineModelBounds( struct cmodel_s *cmodel, vec3_t mins, vec3_t maxs ) {
+	CM_InlineModelBounds( cl.cms, cmodel, mins, maxs );
+}
+
+static inline int CL_GameModule_CM_BoxLeafnums( vec3_t mins, vec3_t maxs, int *list, int listsize, int *topnode ) {
+	return CM_BoxLeafnums( cl.cms, mins, maxs, list, listsize, topnode );
+}
+
+static inline int CL_GameModule_CM_LeafCluster( int leafnum ) {
+	return CM_LeafCluster( cl.cms, leafnum );
+}
+
 /*
 * CL_GameModule_Error
 */
@@ -115,8 +157,7 @@ static void CL_GameModule_NET_GetUserCmd( int frame, usercmd_t *cmd )
 /*
 * CL_GameModule_NET_GetCurrentUserCmdNum
 */
-static int CL_GameModule_NET_GetCurrentUserCmdNum( void )
-{
+static int CL_GameModule_NET_GetCurrentUserCmdNum( void ) {
 	return cls.ucmdHead;
 }
 
@@ -136,73 +177,30 @@ static void CL_GameModule_NET_GetCurrentState( int *ucmdAcknowledged, int *ucmdH
 /*
 * CL_GameModule_R_RegisterWorldModel
 */
-static void CL_GameModule_R_RegisterWorldModel( const char *model )
-{
+static void CL_GameModule_R_RegisterWorldModel( const char *model ) {
 	R_RegisterWorldModel( model, cl.cms ? CM_PVSData( cl.cms ) : NULL, cl.cms ? CM_PHSData( cl.cms ) : NULL );
 }
 
 /*
 * CL_GameModule_MemAlloc
 */
-static void *CL_GameModule_MemAlloc( size_t size, const char *filename, int fileline )
-{
+static void *CL_GameModule_MemAlloc( size_t size, const char *filename, int fileline ) {
 	return _Mem_Alloc( cl_gamemodulepool, size, MEMPOOL_CLIENTGAME, 0, filename, fileline );
 }
 
 /*
 * CL_GameModule_MemFree
 */
-static void CL_GameModule_MemFree( void *data, const char *filename, int fileline )
-{
+static void CL_GameModule_MemFree( void *data, const char *filename, int fileline ) {
 	_Mem_Free( data, MEMPOOL_CLIENTGAME, 0, filename, fileline );
 }
 
 /*
 * CL_GameModule_SoundUpdate
 */
-static void CL_GameModule_SoundUpdate( const vec3_t origin, const vec3_t velocity, const vec3_t v_forward, const vec3_t v_right, const vec3_t v_up )
-{
+static void CL_GameModule_SoundUpdate( const vec3_t origin, const vec3_t velocity,
+	const vec3_t v_forward, const vec3_t v_right, const vec3_t v_up ) {
 	CL_SoundModule_Update( origin, velocity, v_forward, v_right, v_up, CL_WriteAvi() && cls.demo.avi_audio );
-}
-
-static int CL_GameModule_CM_NumInlineModels( void )
-{
-	return CM_NumInlineModels( cl.cms );
-}
-
-static struct cmodel_s *CL_GameModule_CM_InlineModel( int num )
-{
-	return CM_InlineModel( cl.cms, num );
-}
-
-static struct cmodel_s	*CL_GameModule_CM_ModelForBBox( vec3_t mins, vec3_t maxs )
-{
-	return CM_ModelForBBox( cl.cms, mins, maxs );
-}
-
-static void CL_GameModule_CM_TransformedBoxTrace( trace_t *tr, vec3_t start, vec3_t end, vec3_t mins, vec3_t maxs, struct cmodel_s *cmodel, int brushmask, vec3_t origin, vec3_t angles )
-{
-	CM_TransformedBoxTrace( cl.cms, tr, start, end, mins, maxs, cmodel, brushmask, origin, angles );
-}
-
-static int CL_GameModule_CM_TransformedPointContents( vec3_t p, struct cmodel_s *cmodel, vec3_t origin, vec3_t angles )
-{
-	return CM_TransformedPointContents( cl.cms, p, cmodel, origin, angles );
-}
-
-static void CL_GameModule_CM_InlineModelBounds( struct cmodel_s *cmodel, vec3_t mins, vec3_t maxs )
-{
-	CM_InlineModelBounds( cl.cms, cmodel, mins, maxs );
-}
-
-static int CL_GameModule_CM_BoxLeafnums( vec3_t mins, vec3_t maxs, int *list, int listsize, int *topnode )
-{
-	return CM_BoxLeafnums( cl.cms, mins, maxs, list, listsize, topnode );
-}
-
-static int CL_GameModule_CM_LeafCluster( int leafnum )
-{
-	return CM_LeafCluster( cl.cms, leafnum );
 }
 
 /*
@@ -417,19 +415,6 @@ void CL_GameModule_GetEntitySpatilization( int entNum, vec3_t origin, vec3_t vel
 }
 
 /*
-* CL_GameModule_NewSnapshot
-*/
-qboolean CL_GameModule_NewSnapshot( unsigned int snapNum, unsigned int serverTime )
-{
-	if( cge )
-	{
-		cge->NewSnapshot( snapNum, serverTime );
-		return qtrue;
-	}
-	return qfalse;
-}
-
-/*
 * CL_GameModule_ServerCommand
 */
 void CL_GameModule_ServerCommand( void )
@@ -456,6 +441,19 @@ float CL_GameModule_SetSensitivityScale( const float sens )
 		return cge->SetSensitivityScale( sens );
 	else
 		return 1.0f;
+}
+
+/*
+* CL_GameModule_NewSnapshot
+*/
+qboolean CL_GameModule_NewSnapshot( unsigned int snapNum, unsigned int serverTime )
+{
+	if( cge )
+	{
+		cge->NewSnapshot( snapNum, serverTime );
+		return qtrue;
+	}
+	return qfalse;
 }
 
 /*

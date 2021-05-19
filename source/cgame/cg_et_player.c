@@ -134,6 +134,9 @@ static void CG_PlayerModelEntitySplitAngles( const vec3_t angles, const vec3_t v
 
 	if( velocity )
 	{
+#define MAX_LEANING_PITCH 5
+#define MAX_LEANING_YAW 30
+#define MAX_LEANING_ROLL 20
 #define MIN_LEANING_SPEED 10
 		vec3_t hvelocity, axis[3];
 		float speed, front, side, aside, scale;
@@ -182,15 +185,15 @@ static void CG_PlayerModelEntitySplitAngles( const vec3_t angles, const vec3_t v
 				leanAngles[HEAD][ROLL] += side * 0.25;
 			}
 
-			clamp( leanAngles[LOWER][PITCH], -45, 45 );
-			clamp( leanAngles[LOWER][ROLL], -15, 15 );
+			clamp( leanAngles[LOWER][PITCH], -MAX_LEANING_PITCH, MAX_LEANING_PITCH );
+			clamp( leanAngles[LOWER][ROLL], -MAX_LEANING_ROLL, MAX_LEANING_ROLL );
 
-			clamp( leanAngles[UPPER][PITCH], -45, 45 );
+/*			clamp( leanAngles[UPPER][PITCH], -45, 45 );
 			clamp( leanAngles[UPPER][ROLL], -20, 20 );
 
 			clamp( leanAngles[HEAD][PITCH], -45, 45 );
 			clamp( leanAngles[HEAD][ROLL], -20, 20 );
-
+*/
 			for( j = LOWER; j < PMODEL_PARTS; j++ )
 			{
 				for( i = 0; i < 3; i++ )
@@ -199,6 +202,9 @@ static void CG_PlayerModelEntitySplitAngles( const vec3_t angles, const vec3_t v
 		}
 
 #undef MIN_LEANING_SPEED
+#undef MAX_LEANING_PITCH
+#undef MAX_LEANING_YAW
+#undef MAX_LEANING_ROLL
 	}
 }
 

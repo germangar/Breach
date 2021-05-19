@@ -19,9 +19,6 @@
  */
 // winquake.h: Win32-specific Quake header file
 
-#ifndef __WINQUAKE_H__
-#define __WINQUAKE_H__
-
 #include <windows.h>
 #ifdef HAVE_MMSYSTEM
 #include <mmsystem.h>
@@ -41,6 +38,3 @@ extern HINSTANCE global_hInstance;
 
 extern HWND cl_hwnd;
 extern qboolean	ActiveApp, Minimized;
-
-#endif // __WINQUAKE_H__
-

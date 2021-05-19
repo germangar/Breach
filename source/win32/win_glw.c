@@ -348,7 +348,8 @@ void GLimp_Shutdown( void )
 
 	UnregisterClass (WINDOW_CLASS_NAME, glw_state.hInstance);
 
-	if( glState.fullScreen ) {
+	if( glState.fullScreen )
+	{
 		ChangeDisplaySettings( 0, 0 );
 		glState.fullScreen = qfalse;
 	}
@@ -578,7 +579,8 @@ fail:
 */
 qboolean GLimp_GetGammaRamp( size_t stride, unsigned short *ramp )
 {
-	if( qwglGetDeviceGammaRamp3DFX ) {
+	if( qwglGetDeviceGammaRamp3DFX )
+	{
 		if( qwglGetDeviceGammaRamp3DFX( glw_state.hDC, ramp ) )
 			return qtrue;
 	}

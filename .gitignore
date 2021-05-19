@@ -110,3 +110,5 @@ media/base/screenshots
 media/base/console.log
 media/base/console.log
 media/base/mapcache.txt
+source/.vs/warsow_vc8/v16/Browse.VC.db
+*.db
