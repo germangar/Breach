@@ -207,7 +207,7 @@
       <AdditionalDependencies>winmm.lib;ogg_static.lib;vorbis_static.lib;vorbisfile_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(Configuration)$(Platform)\snd_openal_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\win32\x86\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\win32\x86\lib\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>libcmt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\snd_openal.def</ModuleDefinitionFile>
@@ -262,7 +262,7 @@
       <AdditionalDependencies>winmm.lib;ogg_static.lib;vorbis_static.lib;vorbisfile_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>Debug\x64\snd_openal_x64.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\win32\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\win32\x64\lib\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\Debug\x64\$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>libcmt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\snd_openal.def</ModuleDefinitionFile>
@@ -313,7 +313,7 @@
       <AdditionalDependencies>winmm.lib;ogg_static.lib;vorbis_static.lib;vorbisfile_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(Configuration)$(Platform)\snd_openal_x86.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\win32\x86\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\win32\x86\lib\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\$(Configuration)$(Platform)\$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\snd_openal.def</ModuleDefinitionFile>
@@ -361,7 +361,7 @@
       <AdditionalDependencies>winmm.lib;ogg_static.lib;vorbis_static.lib;vorbisfile_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>Release\x64\snd_openal_x64.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>..\win32\x64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\win32\x64\lib\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>.\Release\x64\$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\snd_openal.def</ModuleDefinitionFile>
