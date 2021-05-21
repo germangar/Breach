@@ -268,24 +268,20 @@ int qasReleaseScriptEngine( int engineHandle )
 {
 	enginehandle_t *prevhandle;
 	enginehandle_t *eh = qasGetEngineHandle( engineHandle );
-	contexthandle_t *ch, *next_ch, *prev_ch;
+	contexthandle_t *ch;
 
 	if( !eh )
 		return QASINVALIDHANDLE;
 
 	// release all contexts linked to this engine
-	for( ch = contextHandlesHead, prev_ch = NULL; ch != NULL; ch = next_ch )
+	for( ch = contextHandlesHead; contextHandlesHead != NULL && ch != NULL; ch = ch->next )
 	{
-		next_ch = ch->next;
 		if( ch->owner == engineHandle )
 		{
-			if( prev_ch )
-				prev_ch->next = next_ch;
 			qasReleaseContext( ch->handle );
-		}
-		else
-		{
-			prev_ch = ch;
+			ch = contextHandlesHead; // restart from head
+			if( ch == NULL )
+				break;
 		}
 	}
 

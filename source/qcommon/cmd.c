@@ -965,6 +965,19 @@ qboolean Cmd_Exists( const char *cmd_name )
 }
 
 /*
+   ============
+   Cmd_VStr_f
+   ============
+ */
+static void Cmd_VStr_f( void )
+{
+	if( Cmd_Argc() != 2 )
+		Com_Printf( "vstr <variable> : execute a variable command\n" );
+	else
+		Cbuf_InsertText( Cvar_String( Cmd_Argv( 1 ) ) );
+}
+
+/*
 ============
 Cmd_SetCompletionFunc
 ============
@@ -986,19 +999,6 @@ void Cmd_SetCompletionFunc( const char *cmd_name, xcompletionf_t completion_func
 	}
 
 	Com_DPrintf( "Cmd_SetCompletionFunc: %s already does not exist\n", cmd_name );
-}
-
-/*
-   ============
-   Cmd_VStr_f
-   ============
- */
-static void Cmd_VStr_f( void )
-{
-	if( Cmd_Argc() != 2 )
-		Com_Printf( "vstr <variable> : execute a variable command\n" );
-	else
-		Cbuf_InsertText( Cvar_String( Cmd_Argv( 1 ) ) );
 }
 
 /*
