@@ -76,6 +76,7 @@ source/ipch
 media/AS_DEBUG
 media/base/console.log
 
+media/WIP-ignore
 media/base/cgame_x64.dll
 media/base/console.log
 media/base/game_x64.dll
