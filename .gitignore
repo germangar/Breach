@@ -113,3 +113,11 @@ media/base/console.log
 media/base/mapcache.txt
 source/.vs/warsow_vc8/v16/Browse.VC.db
 *.db
+tools/qfmap2/qfmap2build/libs/l_net/Debug/l_net.Build.CppClean.log
+tools/qfmap2/qfmap2build/libs/l_net/Debug/l_net.log
+tools/qfmap2/qfmap2build/libs/mathlib/Debug/mathlib.Build.CppClean.log
+tools/qfmap2/qfmap2build/libs/mathlib/Debug/mathlib.log
+tools/qfmap2/qfmap2build/libs/picomodel/Debug/picomodel.Build.CppClean.log
+tools/qfmap2/qfmap2build/libs/picomodel/Debug/picomodel.log
+tools/qfmap2/qfmap2build/tools/quake3/q3map2/Debug/q3map2.Build.CppClean.log
+tools/qfmap2/qfmap2build/tools/quake3/q3map2/Debug/q3map2.log
