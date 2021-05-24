@@ -1,9 +1,65 @@
-﻿Build started 24/05/2021 1:19:11.
-     1>Project "E:\CODE\warsow_0.5_sdk\mapping\source\qfmap2\qfmap2build\libs\jpeg6\jpeg6.vcxproj" on node 2 (clean target(s)).
+﻿Build started 24/05/2021 2:06:50.
+     1>Project "E:\CODE\Breach\tools\qfmap2\qfmap2build\libs\jpeg6\jpeg6.vcxproj" on node 2 (rebuild target(s)).
      1>_PrepareForClean:
          Deleting file "Debug\jpeg6.lastbuildstate".
-     1>Done Building Project "E:\CODE\warsow_0.5_sdk\mapping\source\qfmap2\qfmap2build\libs\jpeg6\jpeg6.vcxproj" (clean target(s)).
+       InitializeBuildStatus:
+         Creating "Debug\jpeg6.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I../ /ZI /nologo /W3 /WX- /Od /Oy- /D _CRT_SECURE_NO_DEPRECATE /D WIN32 /D _DEBUG /D _LIB /D _VC80_UPGRADE=0x0710 /D _MBCS /GF /Gm /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /wd4610 /wd4510 /wd4512 /wd4505 /wd4100 /wd4127 /analyze- /errorReport:prompt jcomapi.cpp jdapimin.cpp jdapistd.cpp jdatasrc.cpp jdcoefct.cpp jdcolor.cpp jddctmgr.cpp jdhuff.cpp jdinput.cpp jdmainct.cpp jdmarker.cpp jdmaster.cpp jdpostct.cpp jdsample.cpp jdtrans.cpp jerror.cpp jfdctflt.cpp jidctflt.cpp jmemmgr.cpp jmemnobs.cpp jpgload.cpp jutils.cpp
+         jutils.cpp
+         jpgload.cpp
+         jmemnobs.cpp
+         jmemmgr.cpp
+         jidctflt.cpp
+         jfdctflt.cpp
+         jerror.cpp
+         jdtrans.cpp
+         jdsample.cpp
+         jdpostct.cpp
+         jdmaster.cpp
+         jdmarker.cpp
+         jdmainct.cpp
+         jdinput.cpp
+         jdhuff.cpp
+         jddctmgr.cpp
+         jdcolor.cpp
+         jdcoefct.cpp
+         jdatasrc.cpp
+         jdapistd.cpp
+         Generating Code...
+         Compiling...
+         jdapimin.cpp
+         jcomapi.cpp
+         Generating Code...
+       Lib:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\Lib.exe /OUT:"Debug\jpeg6.lib" /NOLOGO Debug\jcomapi.obj
+         Debug\jdapimin.obj
+         Debug\jdapistd.obj
+         Debug\jdatasrc.obj
+         Debug\jdcoefct.obj
+         Debug\jdcolor.obj
+         Debug\jddctmgr.obj
+         Debug\jdhuff.obj
+         Debug\jdinput.obj
+         Debug\jdmainct.obj
+         Debug\jdmarker.obj
+         Debug\jdmaster.obj
+         Debug\jdpostct.obj
+         Debug\jdsample.obj
+         Debug\jdtrans.obj
+         Debug\jerror.obj
+         Debug\jfdctflt.obj
+         Debug\jidctflt.obj
+         Debug\jmemmgr.obj
+         Debug\jmemnobs.obj
+         Debug\jpgload.obj
+         Debug\jutils.obj
+         jpeg6.vcxproj -> E:\CODE\Breach\tools\qfmap2\qfmap2build\libs\jpeg6\Debug\jpeg6.lib
+       FinalizeBuildStatus:
+         Deleting file "Debug\jpeg6.unsuccessfulbuild".
+         Touching "Debug\jpeg6.lastbuildstate".
+     1>Done Building Project "E:\CODE\Breach\tools\qfmap2\qfmap2build\libs\jpeg6\jpeg6.vcxproj" (rebuild target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.01
+Time Elapsed 00:00:06.09

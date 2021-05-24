@@ -1,0 +1,1 @@
+This files are only used by cmdlib, which is just one C++ file. WTF. Why do you need a lib for this.

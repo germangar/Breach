@@ -1,9 +1,22 @@
-﻿Build started 24/05/2021 1:19:11.
-     1>Project "E:\CODE\warsow_0.5_sdk\mapping\source\qfmap2\qfmap2build\libs\ddslib\ddslib.vcxproj" on node 2 (clean target(s)).
+﻿Build started 24/05/2021 2:06:45.
+     1>Project "E:\CODE\Breach\tools\qfmap2\qfmap2build\libs\ddslib\ddslib.vcxproj" on node 2 (rebuild target(s)).
      1>_PrepareForClean:
          Deleting file ".\Debug\ddslib.lastbuildstate".
-     1>Done Building Project "E:\CODE\warsow_0.5_sdk\mapping\source\qfmap2\qfmap2build\libs\ddslib\ddslib.vcxproj" (clean target(s)).
+       InitializeBuildStatus:
+         Creating ".\Debug\ddslib.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I.. /ZI /nologo /W3 /WX- /Od /Oy- /D _CRT_SECURE_NO_DEPRECATE /D WIN32 /D _DEBUG /D _LIB /D _VC80_UPGRADE=0x0710 /D _MBCS /Gm- /RTC1 /MDd /GS- /fp:precise /Zc:wchar_t /Zc:forScope /Fo".\Debug/" /Fd".\Debug/vc100.pdb" /FR".\Debug\\" /Gd /TC /analyze- /errorReport:prompt ddslib.c
+         ddslib.c
+       Lib:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\Lib.exe /OUT:".\Debug\ddslib.lib" /NOLOGO .\Debug/ddslib.obj
+         ddslib.vcxproj -> E:\CODE\Breach\tools\qfmap2\qfmap2build\libs\ddslib\.\Debug\ddslib.lib
+       BscMake:
+         C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\bscmake.exe /nologo /o".\Debug\ddslib.bsc" .\Debug\ddslib.sbr
+       FinalizeBuildStatus:
+         Deleting file ".\Debug\ddslib.unsuccessfulbuild".
+         Touching ".\Debug\ddslib.lastbuildstate".
+     1>Done Building Project "E:\CODE\Breach\tools\qfmap2\qfmap2build\libs\ddslib\ddslib.vcxproj" (rebuild target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.00
+Time Elapsed 00:00:00.26
