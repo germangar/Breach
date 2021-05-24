@@ -132,3 +132,5 @@ tools/qfmap2/qfmap2build/libs/jpeg6/Debug
 tools/qfmap2/qfmap2build/libs/ddslib/Debug
 tools/qfmap2/qfmap2build/libs/jpeg6/Release
 tools/qfmap2/qfmap2build/libs/ddslib/Debug
+tools/qfmap2/qfmap2build/ipch
+tools/qfmap2/qfmap2build/libs/cmdlib/Debug/cmdlib.Build.CppClean.log
