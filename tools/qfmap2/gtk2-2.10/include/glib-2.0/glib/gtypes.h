@@ -21,13 +21,18 @@
  * Modified by the GLib Team and others 1997-2000.  See the AUTHORS
  * file for a list of people on the GLib Team.  See the ChangeLog
  * files for a list of changes.  These files are distributed with
- * GLib at ftp://ftp.gtk.org/pub/gtk/. 
+ * GLib at ftp://ftp.gtk.org/pub/gtk/.
  */
+
+#if defined(G_DISABLE_SINGLE_INCLUDES) && !defined (__GLIB_H_INSIDE__) && !defined (GLIB_COMPILATION)
+#error "Only <glib.h> can be included directly."
+#endif
 
 #ifndef __G_TYPES_H__
 #define __G_TYPES_H__
 
 #include <glibconfig.h>
+#include <glib/gmacros.h>
 
 G_BEGIN_DECLS
 
@@ -87,12 +92,32 @@ typedef void            (*GHFunc)               (gpointer       key,
                                                  gpointer       value,
                                                  gpointer       user_data);
 typedef void            (*GFreeFunc)            (gpointer       data);
+
+/**
+ * GTranslateFunc:
+ * @str: the untranslated string
+ * @data: user data specified when installing the function, e.g.
+ *  in g_option_group_set_translate_func()
+ * 
+ * The type of functions which are used to translate user-visible
+ * strings, for <option>--help</option> output.
+ * 
+ * Returns: a translation of the string for the current locale.
+ *  The returned string is owned by GLib and must not be freed.
+ */
 typedef const gchar *   (*GTranslateFunc)       (const gchar   *str,
 						 gpointer       data);
 
 
 /* Define some mathematical constants that aren't available
  * symbolically in some strict ISO C implementations.
+ *
+ * Note that the large number of digits used in these definitions
+ * doesn't imply that GLib or current computers in general would be
+ * able to handle floating point numbers with an accuracy like this.
+ * It's mostly an exercise in futility and future proofing. For
+ * extended precision floating point support, look somewhere else
+ * than GLib.
  */
 #define G_E     2.7182818284590452353602874713526624977572470937000
 #define G_LN2   0.69314718055994530941723212145817656807550013436026
@@ -310,6 +335,11 @@ typedef const gchar *   (*GTranslateFunc)       (const gchar   *str,
 #define GINT_FROM_BE(val)	(GINT_TO_BE (val))
 #define GUINT_FROM_BE(val)	(GUINT_TO_BE (val))
 
+#define GSIZE_FROM_LE(val)	(GSIZE_TO_LE (val))
+#define GSSIZE_FROM_LE(val)	(GSSIZE_TO_LE (val))
+#define GSIZE_FROM_BE(val)	(GSIZE_TO_BE (val))
+#define GSSIZE_FROM_BE(val)	(GSSIZE_TO_BE (val))
+
 
 /* Portable versions of host-network order stuff
  */
@@ -396,7 +426,7 @@ struct _GTimeVal
 G_END_DECLS
 
 /* We prefix variable declarations so they can
- * properly get exported in windows dlls.
+ * properly get exported in Windows DLLs.
  */
 #ifndef GLIB_VAR
 #  ifdef G_PLATFORM_WIN32
@@ -419,4 +449,3 @@ G_END_DECLS
 #endif /* GLIB_VAR */
 
 #endif /* __G_TYPES_H__ */
-

@@ -21,8 +21,12 @@
  * Modified by the GLib Team and others 1997-2000.  See the AUTHORS
  * file for a list of people on the GLib Team.  See the ChangeLog
  * files for a list of changes.  These files are distributed with
- * GLib at ftp://ftp.gtk.org/pub/gtk/. 
+ * GLib at ftp://ftp.gtk.org/pub/gtk/.
  */
+
+#if defined(G_DISABLE_SINGLE_INCLUDES) && !defined (__GLIB_H_INSIDE__) && !defined (GLIB_COMPILATION)
+#error "Only <glib.h> can be included directly."
+#endif
 
 #ifndef __G_QUEUE_H__
 #define __G_QUEUE_H__
@@ -40,10 +44,14 @@ struct _GQueue
   guint  length;
 };
 
+#define G_QUEUE_INIT { NULL, NULL, 0 }
+
 /* Queues
  */
 GQueue*  g_queue_new            (void);
 void     g_queue_free           (GQueue           *queue);
+void     g_queue_init           (GQueue           *queue);
+void     g_queue_clear          (GQueue           *queue);
 gboolean g_queue_is_empty       (GQueue           *queue);
 guint    g_queue_get_length     (GQueue           *queue);
 void     g_queue_reverse        (GQueue           *queue);

@@ -233,7 +233,8 @@ void xml_Winding (char *msg, vec3_t p[], int numpoints, qboolean die)
   }
 }
 
-
+// in include
+#define Q3MAP_STREAM_VERSION "1"
 void Broadcast_Setup( const char *dest )
 {
 	address_t address;
@@ -245,12 +246,13 @@ void Broadcast_Setup( const char *dest )
   if (brdcst_socket)
   {
     // send in a header
-    sprintf (sMsg, "<?xml version=\"1.0\"?><q3map_feedback version=\" NOTHINGNESS \">");
+    sprintf (sMsg, "<?xml version=\"1.0\"?><q3map_feedback version=\"" Q3MAP_STREAM_VERSION "\">");
     NMSG_Clear( &msg );
     NMSG_WriteString(&msg, sMsg );
     Net_Send(brdcst_socket, &msg );
   }
 }
+#undef Q3MAP_STREAM_VERSION
 
 void Broadcast_Shutdown()
 {
