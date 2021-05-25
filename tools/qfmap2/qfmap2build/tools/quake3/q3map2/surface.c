@@ -500,7 +500,7 @@ void ClassifySurfaces( int numSurfs, mapDrawSurface_t *ds )
 		
 		if( ds->type != SURFACE_PATCH && ds->type != SURFACE_FACE )
 		{
-			if( ds->numVerts > SHADER_MAX_VERTEXES )
+			if( ds->numVerts > maxSurfaceVerts )
 				ds->type = SURFACE_FORCED_META;
 		}
 		
